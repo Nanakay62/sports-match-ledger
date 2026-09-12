@@ -1,0 +1,124 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  gate-1-format-and-lint:
+    name: "Gate 1: Format & Lint"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'apps/web/package.json'
+      - name: Install Frontend Dependencies
+        run: cd apps/web && npm ci
+      - name: Run Next.js Lint
+        run: cd apps/web && npm run lint
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Ruff
+        run: pip install ruff==0.9.3
+      - name: Run Ruff Check & Format Check
+        run: ruff check . && ruff format --check .
+
+  gate-2-type-check:
+    name: "Gate 2: Static Type Checking"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'apps/web/package.json'
+      - name: Install Frontend Dependencies
+        run: cd apps/web && npm ci
+      - name: TypeScript Check
+        run: cd apps/web && npx tsc --noEmit
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python Types & Dependencies
+        run: |
+          pip install pydantic==2.10.6 sqlalchemy==2.0.37 mypy==1.14.1
+      - name: Run Mypy Type Check
+        run: mypy packages apps/api workers
+
+  gate-3-dependency-audit:
+    name: "Gate 3: Dependency Auditing & Pinning"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Pinned Versions in package.json
+        run: |
+          grep -E '"(\^|~|<|>)' apps/web/package.json && exit 1 || echo "All npm dependencies pinned"
+      - name: Check Pinned Versions in requirements.txt
+        run: |
+          grep -E '(>=|<=|>|<|~=)' apps/api/requirements.txt && exit 1 || echo "All pip dependencies pinned"
+
+  gate-4-architecture-boundary:
+    name: "Gate 4: Architectural Boundary & Security"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify No Direct Model Provider Calls Outside packages/ai
+        run: |
+          # Fails if openai, anthropic, or google.generativeai are imported outside packages/ai
+          FORBIDDEN=$(grep -rnE 'import (openai|anthropic|google\.generativeai)' apps/ workers/ || true)
+          if [ -n "$FORBIDDEN" ]; then
+            echo "Direct provider imports detected outside packages/ai:"
+            echo "$FORBIDDEN"
+            exit 1
+          fi
+          echo "Architectural boundary check passed."
+
+  gate-5-unit-and-invariant-tests:
+    name: "Gate 5: Automated Unit & Invariant Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Test Dependencies
+        run: |
+          pip install pytest==8.3.4 pydantic==2.10.6 sqlalchemy==2.0.37
+      - name: Run Pytest Unit Tests
+        run: PYTHONPATH=. pytest tests/unit
+
+  gate-6-deterministic-release-gate:
+    name: "Gate 6: MLflow Deterministic Scorer Gate"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run Deterministic Evaluator Gate
+        run: |
+          PYTHONPATH=. python -c "
+          from packages.ai.ladder import DeterministicValidator
+          res = DeterministicValidator.validate_generation(
+              generated_text='Real Madrid opened talks for Jonas Lindqvist on Monday.',
+              source_evidence=['Real Madrid opened talks for Jonas Lindqvist on Monday.'],
+              expected_entities=['Real Madrid', 'Jonas Lindqvist']
+          )
+          assert res.is_valid and res.unsupported_fact_rate == 0.0, 'Release gate assertion failed'
+          print('Gate 6 deterministic scorer assertions passed.')
+          "
