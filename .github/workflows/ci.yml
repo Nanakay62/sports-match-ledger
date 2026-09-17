@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: 'apps/web/package.json'
+          cache-dependency-path: 'apps/web/package-lock.json'
       - name: Install Frontend Dependencies
         run: cd apps/web && npm ci
       - name: Run Next.js Lint
@@ -42,7 +42,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: 'apps/web/package.json'
+          cache-dependency-path: 'apps/web/package-lock.json'
       - name: Install Frontend Dependencies
         run: cd apps/web && npm ci
       - name: TypeScript Check
@@ -54,7 +54,7 @@ jobs:
           python-version: '3.12'
       - name: Install Python Types & Dependencies
         run: |
-          pip install pydantic==2.10.6 sqlalchemy==2.0.37 mypy==1.14.1
+          pip install -r apps/api/requirements.txt
       - name: Run Mypy Type Check
         run: mypy packages apps/api workers
 
@@ -97,7 +97,7 @@ jobs:
           python-version: '3.12'
       - name: Install Test Dependencies
         run: |
-          pip install pytest==8.3.4 pydantic==2.10.6 sqlalchemy==2.0.37
+          pip install -r apps/api/requirements.txt
       - name: Run Pytest Unit Tests
         run: PYTHONPATH=. pytest tests/unit
 
@@ -110,6 +110,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install Dependencies
+        run: |
+          pip install pydantic==2.10.6
       - name: Run Deterministic Evaluator Gate
         run: |
           PYTHONPATH=. python -c "
