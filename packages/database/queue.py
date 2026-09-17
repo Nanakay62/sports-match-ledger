@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import PipelineJobModel, SourceRegistryModel, SourceRegistryStatus
+from .models import DeadLetterJobModel, PipelineJobModel, SourceRegistryModel, SourceRegistryStatus
 
 
 class JobQueueService:
@@ -95,6 +95,37 @@ class JobQueueService:
                 session.add(new_job)
                 created_jobs.append(new_job)
 
+        # Cancel any pending jobs for sources that are paused, blocked, or rejected
+        non_approved_stmt = select(SourceRegistryModel.id).where(
+            SourceRegistryModel.status.in_(
+                [
+                    SourceRegistryStatus.PAUSED.value,
+                    SourceRegistryStatus.BLOCKED.value,
+                    SourceRegistryStatus.PROPOSED.value,
+                    SourceRegistryStatus.REJECTED.value,
+                ]
+            )
+        )
+        non_approved_ids = set(session.execute(non_approved_stmt).scalars().all())
+        if non_approved_ids:
+            pending_jobs = list(
+                session.execute(
+                    select(PipelineJobModel).where(
+                        PipelineJobModel.lane == "feed_poller",
+                        PipelineJobModel.status == "pending",
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for pj in pending_jobs:
+                try:
+                    p_data = json.loads(pj.payload)
+                    if p_data.get("registry_id") in non_approved_ids:
+                        pj.status = "cancelled"
+                except Exception:
+                    continue
+
         session.flush()
         return created_jobs
 
@@ -167,7 +198,7 @@ class JobQueueService:
         max_attempts: int = 3,
         retry_delay_minutes: int = 5,
     ) -> PipelineJobModel:
-        """Handles job failure: retries with backoff or transitions to failed status."""
+        """Handles job failure: retries with backoff or transitions to dead_letter status."""
         job = session.execute(select(PipelineJobModel).where(PipelineJobModel.id == job_id)).scalar_one_or_none()
 
         if not job:
@@ -175,13 +206,54 @@ class JobQueueService:
 
         now = datetime.now(timezone.utc)
         if job.attempts >= max_attempts:
-            job.status = "failed"
+            job.status = "dead_letter"
+            dlj = DeadLetterJobModel(
+                id=f"dlj-{uuid.uuid4().hex[:12]}",
+                job_id=job.id,
+                lane=job.lane,
+                payload=job.payload,
+                attempts=job.attempts,
+                error_message=error_message,
+                last_failed_at=now,
+                replayed=False,
+                replayed_at=None,
+            )
+            session.add(dlj)
         else:
             job.status = "pending"
             job.scheduled_at = now + timedelta(minutes=retry_delay_minutes)
 
         session.flush()
         return job
+
+    @staticmethod
+    def replay_dead_letter_job(session: Session, dead_letter_id: str) -> PipelineJobModel:
+        """Re-enqueues an exhausted dead-letter job for execution and marks the dead-letter record as replayed."""
+        dlj = session.execute(select(DeadLetterJobModel).where(DeadLetterJobModel.id == dead_letter_id)).scalar_one_or_none()
+        if not dlj:
+            raise ValueError(f"Dead letter job {dead_letter_id} not found")
+
+        now = datetime.now(timezone.utc)
+        new_job = PipelineJobModel(
+            id=f"job-replayed-{uuid.uuid4().hex[:10]}",
+            lane=dlj.lane,
+            status="pending",
+            payload=dlj.payload,
+            attempts=0,
+            scheduled_at=now,
+            created_at=now,
+        )
+        session.add(new_job)
+        dlj.replayed = True
+        dlj.replayed_at = now
+        session.flush()
+        return new_job
+
+    @staticmethod
+    def list_dead_letters(session: Session, limit: int = 50) -> list[DeadLetterJobModel]:
+        """Lists dead letter entries ordered by last failure time."""
+        stmt = select(DeadLetterJobModel).order_by(DeadLetterJobModel.last_failed_at.desc()).limit(limit)
+        return list(session.execute(stmt).scalars().all())
 
     @staticmethod
     def list_jobs(

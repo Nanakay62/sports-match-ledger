@@ -295,3 +295,95 @@ def test_distinct_stories_remain_separate(db_session):
 
     claims = db_session.execute(select(ClaimModel)).scalars().all()
     assert len(claims) == 2
+
+
+def test_cross_language_entity_weighted_clustering(db_session):
+    """Verifies that articles in different languages sharing 2+ canonical entities within 48h collapse to same cluster."""
+    worker = SpeedLaneWorker(session=db_session)
+
+    # 1. English report
+    payload_en = {
+        "outlet": "BBC Sport",
+        "author": "Simon Stone",
+        "source_url": "https://bbc.example/sport/arsenal-osei-en",
+        "published_at": "2026-09-10T10:00:00Z",
+        "headline": "Arsenal submit £50m bid for Sporting CP forward Emeka Osei",
+        "body": "Arsenal have lodged a £50m bid to sign striker Emeka Osei from Sporting CP after extensive scouting.",
+        "language": "en",
+    }
+    res_1 = worker.process_raw_article(payload_en)
+    assert res_1["action"] == "claim_created"
+    event_id_1 = res_1["event_id"]
+
+    # 2. Spanish report with distinct wording, but matching Arsenal and Sporting CP and Emeka Osei
+    payload_es = {
+        "outlet": "Marca",
+        "author": "Jose Felix Diaz",
+        "source_url": "https://marca.example/futbol/arsenal-osei-es",
+        "published_at": "2026-09-10T13:00:00Z",
+        "headline": "El Arsenal y el Sporting CP negocian el traspaso de Emeka Osei",
+        "body": "El Arsenal avanza en las conversaciones formales con el Sporting CP para cerrar la incorporacion de Emeka Osei.",
+        "language": "es",
+    }
+    res_2 = worker.process_raw_article(payload_es)
+    assert res_2["action"] == "evidence_attached"
+    assert res_2["event_id"] == event_id_1
+
+    # Should have 1 event and 1 claim with 2 evidence sources
+    events = db_session.execute(select(EventModel)).scalars().all()
+    assert len(events) == 1
+
+    claims = db_session.execute(select(ClaimModel)).scalars().all()
+    assert len(claims) == 1
+
+    evidence = db_session.execute(select(ClaimEvidenceModel)).scalars().all()
+    assert len(evidence) == 2
+
+
+def test_predicate_conflict_triggers_cluster_split_dispute(db_session):
+    """Contradicting predicates (e.g. transfer_denied vs submits_bid) trigger an automatic cluster split."""
+    worker = SpeedLaneWorker(session=db_session)
+
+    # 1. Initial report claiming a bid was submitted
+    payload_bid = {
+        "outlet": "The Athletic",
+        "author": "David Ornstein",
+        "source_url": "https://theathletic.example/football/arsenal-bid-osei",
+        "published_at": "2026-09-10T09:00:00Z",
+        "headline": "Arsenal submits bid of £50m for Emeka Osei from Sporting CP",
+        "body": "Arsenal submits bid of £50m for Emeka Osei from Sporting CP as negotiations open.",
+        "language": "en",
+    }
+    res_1 = worker.process_raw_article(payload_bid)
+    assert res_1["action"] == "claim_created"
+    assert res_1["predicate"] == "submits_bid"
+    event_1_id = res_1["event_id"]
+
+    # 2. Denial report claiming club denies move
+    payload_denial = {
+        "outlet": "Sky Sports",
+        "author": "Kaveh Solhekol",
+        "source_url": "https://skysports.example/football/arsenal-deny-osei",
+        "published_at": "2026-09-10T11:00:00Z",
+        "headline": "Arsenal denies move for Emeka Osei from Sporting CP",
+        "body": "Arsenal denies move for Emeka Osei from Sporting CP and dismisses any formal bid or offer.",
+        "language": "en",
+    }
+    res_2 = worker.process_raw_article(payload_denial)
+
+    # Must be split into a dispute cluster rather than collapsed
+    assert res_2["action"] == "cluster_split_dispute"
+    assert res_2["dispute_status"] == "active"
+    assert res_2["disputed_by_event_id"] == event_1_id
+    assert res_2["predicate"] == "transfer_denied"
+
+    # Both events exist in database and are marked Disputed
+    ev_1 = db_session.execute(select(EventModel).where(EventModel.id == event_1_id)).scalar_one()
+    ev_2 = db_session.execute(select(EventModel).where(EventModel.id == res_2["event_id"])).scalar_one()
+
+    assert ev_1.status == "disputed"
+    assert ev_2.status == "disputed"
+    assert ev_1.disputed_by_event_id == ev_2.id
+    assert ev_2.disputed_by_event_id == ev_1.id
+    assert ev_1.dispute_status == "active"
+    assert ev_2.dispute_status == "active"

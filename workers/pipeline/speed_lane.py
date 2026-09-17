@@ -11,6 +11,7 @@ from packages.database.repository import LedgerRepository
 
 from .adapters.rss_adapter import ArticleIngestionAdapter, RawArticle
 from .attribution import detect_attribution_type
+from .claim_extractor import StructuredClaimExtractor
 from .dedup import compute_content_hash, compute_simhash, strip_boilerplate
 
 
@@ -106,6 +107,12 @@ class SpeedLaneWorker:
             article_published_at=article.published_at,
         )
 
+        # Step 2e: Extract structured claim triple (§5.2) early for predicate-conflict evaluation
+        triple = StructuredClaimExtractor.extract_structured_claim(
+            headline=article.headline,
+            body=cleaned_body,
+        )
+
         # Step 3: Cross-Feed Deduplication & Evidence Roots (BEFORE event creation)
         near_claim, similarity = LedgerRepository.find_recent_near_duplicate(
             session=self.session,
@@ -116,7 +123,28 @@ class SpeedLaneWorker:
             reference_time=article.published_at,
             cited_source=cited_source,
             entity_names=entity_names,
+            language=article.language,
+            predicate=triple.predicate,
         )
+
+        # Check for conflicting predicates (Handbook §14 cluster-splitting)
+        CONFLICTING_PREDICATE_PAIRS = {
+            ("transfer_denied", "official_signing"),
+            ("transfer_denied", "agrees_terms"),
+            ("transfer_denied", "submits_bid"),
+            ("transfer_denied", "medical_scheduled"),
+            ("official_signing", "transfer_denied"),
+            ("agrees_terms", "transfer_denied"),
+            ("submits_bid", "transfer_denied"),
+            ("medical_scheduled", "transfer_denied"),
+        }
+
+        split_dispute_target_id: str | None = None
+        if near_claim and triple.predicate and near_claim.predicate:
+            if (triple.predicate, near_claim.predicate) in CONFLICTING_PREDICATE_PAIRS:
+                # Direct contradiction detected -> Split cluster into distinct linked dispute events!
+                split_dispute_target_id = near_claim.event_id
+                near_claim = None  # Do not attach as corroborating evidence
 
         if near_claim:
             event = near_claim.event
@@ -163,8 +191,15 @@ class SpeedLaneWorker:
                 "processed_at": datetime.now(timezone.utc).isoformat(),
             }
 
-        # Step 4: Genuinely novel event: Deterministic event ID derivation and clustering
-        if entities:
+        # Step 4: Genuinely novel event (or dispute cluster-split): Deterministic event ID derivation
+        initial_status = EventStatus.DISPUTED if split_dispute_target_id else EventStatus.RUMOUR
+        if split_dispute_target_id:
+            import hashlib
+
+            h = hashlib.sha256(f"{article.source_url}:dispute".encode()).hexdigest()[:6]
+            entity_slug = "-".join(sorted(e.name.lower().replace(" ", "-") for e in entities[:2])) if entities else "misc"
+            event_id = f"e-dispute-{entity_slug}-{h}"
+        elif entities:
             entity_slug = "-".join(sorted(e.name.lower().replace(" ", "-") for e in entities[:2]))
             event_id = f"e-{entity_slug}"
         else:
@@ -183,7 +218,7 @@ class SpeedLaneWorker:
             source_url=article.source_url,
             sport="Football",
             competition="Premier League",
-            status=EventStatus.RUMOUR,
+            status=initial_status,
             first_reported_outlet=article.outlet,
             first_reported_lead_minutes=0,
             entities=entity_dicts,
@@ -242,11 +277,16 @@ class SpeedLaneWorker:
                 "processed_at": datetime.now(timezone.utc).isoformat(),
             }
 
-        # Step 6: Append new claim to ledger
+        # Step 6: Append structured claim triple (§5.2) to ledger
+        # Note: triple was already extracted in Step 2e for predicate conflict evaluation
+
         import hashlib
 
         claim_hash = hashlib.sha256(f"{article.source_url}:{article.published_at.isoformat()}".encode()).hexdigest()[:8]
         claim_id = f"c-{claim_hash}"
+
+        # Ensure claim_text stores the concise schema-validated claim/evidence span, not raw article body
+        claim_sentence = triple.evidence_span or (cleaned_body[:280] + ("..." if len(cleaned_body) > 280 else ""))
 
         claim = LedgerRepository.append_claim(
             session=self.session,
@@ -255,7 +295,7 @@ class SpeedLaneWorker:
             outlet_name=article.outlet,
             reporter=reporter_name,
             reporter_id=reporter_id,
-            claim_text=cleaned_body,
+            claim_text=claim_sentence,
             original_url=article.source_url,
             attribution=attribution_category,
             attribution_type=attribution_type,
@@ -263,22 +303,44 @@ class SpeedLaneWorker:
             timestamp=article.published_at,
             content_hash=content_hash,
             simhash=simhash,
+            subject_id=triple.subject_id,
+            predicate=triple.predicate,
+            object_id=triple.object_id,
+            qualifiers=triple.qualifiers,
+            evidence_span=triple.evidence_span,
+            resolvable=triple.resolvable,
+            resolution_class=triple.resolution_class,
+            schema_version="5.2.0",
         )
+
+        if split_dispute_target_id:
+            LedgerRepository.link_event_dispute(
+                session=self.session,
+                event_a_id=split_dispute_target_id,
+                event_b_id=event.id,
+            )
 
         self.session.commit()
         latency_ms = round((time.monotonic() - start_time) * 1000, 2)
+        action = "cluster_split_dispute" if split_dispute_target_id else "claim_created"
 
         return {
             "lane": "speed_lane",
-            "action": "claim_created",
+            "action": action,
             "event_id": event.id,
             "claim_id": claim.id,
+            "disputed_by_event_id": split_dispute_target_id,
+            "dispute_status": "active" if split_dispute_target_id else None,
             "headline": event.headline,
             "status": event.status,
             "entities": [e.name for e in entities],
             "reporter": reporter_name,
             "reporter_id": reporter_id,
             "attribution_type": attribution_type,
+            "predicate": triple.predicate,
+            "subject_id": triple.subject_id,
+            "object_id": triple.object_id,
+            "evidence_span": triple.evidence_span,
             "latency_ms": latency_ms,
             "source": article.outlet,
             "processed_at": datetime.now(timezone.utc).isoformat(),

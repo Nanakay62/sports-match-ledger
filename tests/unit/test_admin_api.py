@@ -5,7 +5,14 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from apps.api.app.main import app
-from packages.database.models import Base, ClaimModel, EventModel, SourceModel
+from packages.database.models import (
+    Base,
+    ClaimModel,
+    DeadLetterJobModel,
+    EventModel,
+    PipelineJobModel,
+    SourceModel,
+)
 from packages.database.registry import SourceRegistryService
 from packages.database.session import get_db
 
@@ -168,3 +175,152 @@ def test_claims_corrections_endpoint():
     corrections = resp.json()
     assert len(corrections) >= 1
     assert corrections[0]["claim"]["id"] == "c-corr-01"
+
+
+def test_admin_quarantine_and_dead_letters():
+    from packages.database.models import DeadLetterJobModel, QuarantinedDocumentModel
+
+    with TestSession() as session:
+        session.add(
+            QuarantinedDocumentModel(
+                id="quar-test-01",
+                source_name="Test Unreliable Wire",
+                source_url="https://example.com/quar",
+                raw_payload='{"text": "paywall"}',
+                rejection_reason="Truncated payload",
+                confidence_score=0.25,
+            )
+        )
+        session.add(
+            DeadLetterJobModel(
+                id="dl-test-01",
+                job_id="job-999",
+                lane="speed",
+                payload='{"action": "test"}',
+                attempts=3,
+                error_message="Connection timed out",
+                replayed=False,
+            )
+        )
+        session.commit()
+
+    # Overview includes resilience counts
+    ov_resp = client.get("/api/v1/admin/overview", headers=ADMIN_HEADERS)
+    assert ov_resp.status_code == 200
+    ov_data = ov_resp.json()
+    assert ov_data["quarantined_documents"] >= 1
+    assert ov_data["dead_letter_jobs"] >= 1
+
+    # Quarantine endpoint
+    q_resp = client.get("/api/v1/admin/quarantine", headers=ADMIN_HEADERS)
+    assert q_resp.status_code == 200
+    assert len(q_resp.json()) >= 1
+    assert q_resp.json()[0]["id"] == "quar-test-01"
+
+    # Dead letters endpoint
+    dl_resp = client.get("/api/v1/admin/dead-letters", headers=ADMIN_HEADERS)
+    assert dl_resp.status_code == 200
+    assert len(dl_resp.json()) >= 1
+    assert dl_resp.json()[0]["id"] == "dl-test-01"
+
+
+def test_admin_clusters_list_and_detail():
+    with TestSession() as session:
+        src = SourceModel(id="src-cluster-test", name="Sky Sports", source_type="outlet")
+        ev1 = EventModel(
+            id="e-cluster-01",
+            headline="Arsenal submit bid for Emeka Osei",
+            status="Disputed",
+            sport="Football",
+            competition="Premier League",
+            summary="Arsenal bid reported.",
+            source_url="https://example.com/ev1",
+            disputed_by_event_id="e-cluster-02",
+            dispute_status="active",
+        )
+        ev2 = EventModel(
+            id="e-cluster-02",
+            headline="Arsenal deny move for Emeka Osei",
+            status="Disputed",
+            sport="Football",
+            competition="Premier League",
+            summary="Arsenal denial reported.",
+            source_url="https://example.com/ev2",
+            disputed_by_event_id="e-cluster-01",
+            dispute_status="active",
+        )
+        cl1 = ClaimModel(
+            id="c-cluster-01",
+            event_id="e-cluster-01",
+            source_id="src-cluster-test",
+            claim_text="Arsenal submit formal bid.",
+            predicate="submits_bid",
+            subject_id="ent-club-arsenal",
+            object_id="ent-player-emeka-osei",
+            evidence_span="Arsenal submit formal bid",
+            attribution="first_party",
+            original_url="https://example.com/cl1",
+        )
+        session.add_all([src, ev1, ev2, cl1])
+        session.commit()
+
+    # List clusters
+    clusters_resp = client.get("/api/v1/admin/clusters", headers=ADMIN_HEADERS)
+    assert clusters_resp.status_code == 200
+    clusters = clusters_resp.json()
+    assert len(clusters) >= 2
+    ev1_summary = next(c for c in clusters if c["event_id"] == "e-cluster-01")
+    assert ev1_summary["status"] == "Disputed"
+    assert ev1_summary["dispute_status"] == "active"
+    assert ev1_summary["disputed_by_event_id"] == "e-cluster-02"
+    assert ev1_summary["claims_count"] == 1
+
+    # Get cluster detail
+    detail_resp = client.get("/api/v1/admin/clusters/e-cluster-01", headers=ADMIN_HEADERS)
+    assert detail_resp.status_code == 200
+    detail = detail_resp.json()
+    assert detail["event_id"] == "e-cluster-01"
+    assert detail["dispute_target"]["event_id"] == "e-cluster-02"
+    assert len(detail["claims"]) == 1
+    assert detail["claims"][0]["predicate"] == "submits_bid"
+
+    # Non-existent cluster
+    resp_404 = client.get("/api/v1/admin/clusters/non-existent-id", headers=ADMIN_HEADERS)
+    assert resp_404.status_code == 404
+
+
+def test_admin_queue_stats():
+    with TestSession() as session:
+        j1 = PipelineJobModel(
+            id="job-test-1",
+            lane="speed_lane",
+            status="pending",
+            payload="{}",
+        )
+        j2 = PipelineJobModel(
+            id="job-test-2",
+            lane="evidence_lane",
+            status="completed",
+            payload="{}",
+        )
+        dl = DeadLetterJobModel(
+            id="dl-test-1",
+            job_id="job-orig-1",
+            lane="speed_lane",
+            payload="{}",
+            attempts=3,
+            error_message="Feed timeout",
+        )
+        session.add_all([j1, j2, dl])
+        session.commit()
+
+    resp = client.get("/api/v1/admin/queue/stats", headers=ADMIN_HEADERS)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_jobs"] == 2
+    assert data["pending_jobs"] == 1
+    assert data["completed_jobs"] == 1
+    assert data["dead_letter_jobs"] == 1
+    assert data["backlog_by_job_type"].get("speed_lane") == 1
+    assert data["sla_10min_breached"] is False
+    assert "timestamp" in data

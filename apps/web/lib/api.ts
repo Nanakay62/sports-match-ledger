@@ -229,6 +229,8 @@ export async function fetchAdminOverview(): Promise<any> {
     total_sources: 15,
     pending_source_reviews: 2,
     pending_human_reviews: 3,
+    quarantined_documents: 2,
+    dead_letter_jobs: 2,
     total_inference_spend_eur: 0.0035,
     cost_per_thousand_events_eur: 0.70,
   };
@@ -310,4 +312,229 @@ export async function fetchAdminEntities(): Promise<any[]> {
   }
   return [];
 }
+
+export async function fetchAdminDeadLetters(): Promise<any[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/dead-letters`, {
+      next: { revalidate: 0 },
+      headers: { "X-Admin-Key": ADMIN_API_KEY },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // Fallback
+  }
+  return [];
+}
+
+export async function replayDeadLetterJob(deadLetterId: string): Promise<any> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/dead-letters/${deadLetterId}/replay`, {
+      method: "POST",
+      headers: { "X-Admin-Key": ADMIN_API_KEY },
+    });
+    return await res.json();
+  } catch {
+    return { status: "error" };
+  }
+}
+
+export async function fetchAdminQuarantine(): Promise<any[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/quarantine`, {
+      next: { revalidate: 0 },
+      headers: { "X-Admin-Key": ADMIN_API_KEY },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // Fallback
+  }
+  return [];
+}
+
+export async function pauseAdminSource(registryId: string, reason: string): Promise<any> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/sources/${registryId}/pause`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Key": ADMIN_API_KEY,
+      },
+      body: JSON.stringify({ reason }),
+    });
+    return await res.json();
+  } catch {
+    return { status: "error" };
+  }
+}
+
+export async function resumeAdminSource(registryId: string): Promise<any> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/sources/${registryId}/resume`, {
+      method: "POST",
+      headers: { "X-Admin-Key": ADMIN_API_KEY },
+    });
+    return await res.json();
+  } catch {
+    return { status: "error" };
+  }
+}
+
+export async function blockAdminSource(registryId: string, reason: string): Promise<any> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/sources/${registryId}/block`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Key": ADMIN_API_KEY,
+      },
+      body: JSON.stringify({ reason }),
+    });
+    return await res.json();
+  } catch {
+    return { status: "error" };
+  }
+}
+
+export async function resolveAdminReviewItem(
+  claimId: string,
+  action: "confirm" | "dispute" | "correct",
+  notes?: string
+): Promise<any> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/review-queue/${claimId}/resolve`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Key": ADMIN_API_KEY,
+      },
+      body: JSON.stringify({ action, notes }),
+    });
+    return await res.json();
+  } catch {
+    return { status: "error" };
+  }
+}
+
+export async function fetchAdminEvaluationLogs(): Promise<any[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/evaluation-logs`, {
+      next: { revalidate: 0 },
+      headers: { "X-Admin-Key": ADMIN_API_KEY },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // Fallback
+  }
+  return [];
+}
+
+export interface AdminClusterSummary {
+  event_id: string;
+  headline: string;
+  status: string;
+  sport: string;
+  competition: string;
+  first_reported_outlet: string | null;
+  claims_count: number;
+  evidence_count: number;
+  disputed_by_event_id: string | null;
+  dispute_status: string | null;
+  entities: { name: string; type: string }[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminEvidenceItem {
+  id: string;
+  outlet_name: string;
+  reporter: string | null;
+  attribution_type: string;
+  similarity_to_root: number;
+  published_at: string | null;
+  source_url: string;
+}
+
+export interface AdminClaimClusterItem {
+  id: string;
+  claim_text: string;
+  predicate: string | null;
+  subject_id: string | null;
+  object_id: string | null;
+  evidence_span: string | null;
+  resolvable: boolean;
+  resolution_class: string;
+  outlet: string;
+  reporter: string | null;
+  attribution: string;
+  attribution_type: string;
+  language: string;
+  timestamp: string | null;
+  evidence_count: number;
+  evidence: AdminEvidenceItem[];
+}
+
+export interface AdminClusterDetail {
+  event_id: string;
+  headline: string;
+  summary: string;
+  status: string;
+  sport: string;
+  competition: string;
+  first_reported_outlet: string | null;
+  disputed_by_event_id: string | null;
+  dispute_status: string | null;
+  dispute_target: {
+    event_id: string;
+    headline: string;
+    status: string;
+    dispute_status: string | null;
+  } | null;
+  entities: { name: string; type: string }[];
+  created_at: string;
+  updated_at: string;
+  claims: AdminClaimClusterItem[];
+}
+
+export async function fetchAdminClusters(): Promise<AdminClusterSummary[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/clusters`, {
+      next: { revalidate: 0 },
+      headers: { "X-Admin-Key": ADMIN_API_KEY },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // Fallback
+  }
+  return [];
+}
+
+export async function fetchAdminClusterDetail(eventId: string): Promise<AdminClusterDetail | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/clusters/${eventId}`, {
+      next: { revalidate: 0 },
+      headers: { "X-Admin-Key": ADMIN_API_KEY },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // Fallback
+  }
+  return null;
+}
+
+
 

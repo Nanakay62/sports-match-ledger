@@ -100,6 +100,20 @@ uv run --with-requirements apps/api/requirements.txt --with httpx pytest
 
 ---
 
+## Cost Ceilings
+
+The platform strictly isolates three cost pools with monthly spending limits:
+
+| Cost Pool | Description | Monthly Ceiling |
+|---|---|---|
+| **Build** | Coding agents and local CI development | €50 / month |
+| **Run** | Core infrastructure (Postgres + container compute, Tier 0) | €30 / month |
+| **Inference** | Hosted production model executions (L2–L4) | €200 / month |
+
+Target blended inference cost is strictly budgeted at **<€0.02 per published event**. Full tier definitions and unit economics are documented in [`docs/cost-model/pricing.md`](docs/cost-model/pricing.md).
+
+---
+
 ## Deploying to Production
 
 When hosting publicly:

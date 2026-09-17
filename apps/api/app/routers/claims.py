@@ -1,7 +1,8 @@
 import json
 import re
+from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -17,6 +18,8 @@ from packages.common.models import (
 from packages.database.models import ClaimModel, SourceModel
 from packages.database.repository import LedgerRepository
 from packages.database.session import get_db
+
+from ..security.api_keys import APIClient, get_api_client
 
 router = APIRouter(prefix="/claims", tags=["claims"])
 
@@ -38,6 +41,73 @@ def parse_claim_attribution(raw: str) -> ClaimAttribution:
 class ClaimWithEvent(BaseModel):
     claim: Claim
     event: Event
+
+
+class StructuredClaimDetail(BaseModel):
+    id: str
+    event_id: str
+    outlet: str
+    reporter: str | None
+    text: str
+    subject_id: str | None
+    predicate: str | None
+    object_id: str | None
+    evidence_span: str | None
+    resolvable: bool
+    resolution_class: str
+    attribution: str
+    attribution_type: str
+    language: str
+    original_url: str
+    is_superseded: bool
+    superseded_by: str | None
+    timestamp: datetime
+
+
+@router.get("", response_model=list[StructuredClaimDetail])
+def query_claims(
+    subject_id: str | None = Query(default=None, description="Filter by subject entity ID"),
+    predicate: str | None = Query(default=None, description="Filter by predicate"),
+    object_id: str | None = Query(default=None, description="Filter by object entity ID"),
+    attribution_type: str | None = Query(default=None, description="Filter by attribution type"),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    client: APIClient = Depends(get_api_client),
+    db: Session = Depends(get_db),
+) -> list[StructuredClaimDetail]:
+    """Public claims data API: query structured ledger claims with optional entity and predicate filters."""
+    claims = LedgerRepository.query_claims(
+        session=db,
+        subject_id=subject_id,
+        predicate=predicate,
+        object_id=object_id,
+        attribution_type=attribution_type,
+        limit=limit,
+        offset=offset,
+    )
+    return [
+        StructuredClaimDetail(
+            id=c.id,
+            event_id=c.event_id,
+            outlet=c.source.name if c.source else "Unknown",
+            reporter=c.reporter,
+            text=c.claim_text,
+            subject_id=c.subject_id,
+            predicate=c.predicate,
+            object_id=c.object_id,
+            evidence_span=c.evidence_span,
+            resolvable=c.resolvable,
+            resolution_class=c.resolution_class,
+            attribution=c.attribution,
+            attribution_type=c.attribution_type,
+            language=c.language,
+            original_url=c.original_url,
+            is_superseded=c.is_superseded,
+            superseded_by=c.superseded_by,
+            timestamp=c.timestamp,
+        )
+        for c in claims
+    ]
 
 
 @router.get("/by-event/{event_id}", response_model=list[Claim])

@@ -151,3 +151,56 @@ class ArticleIngestionAdapter:
             raise ProvenanceError(f"Provenance validation failed: {exc}") from exc
 
         return article
+
+
+def calculate_extraction_confidence(
+    headline: str,
+    body: str,
+    author: str | None = None,
+) -> float:
+    """Calculates deterministic extraction confidence score in range [0.0, 1.0].
+
+    Penalizes truncated bodies (<15 words), missing/short headlines, and boilerplate error text.
+    Articles scoring below 0.50 are quarantined before ledger entry.
+    """
+    score = 1.0
+
+    # Body validation
+    words = body.strip().split()
+    word_count = len(words)
+    if word_count < 15:
+        score -= 0.55
+    elif word_count < 25:
+        score -= 0.10
+
+    # Headline validation
+    clean_headline = headline.strip()
+    hl_words = len(clean_headline.split())
+    if hl_words < 3 or len(clean_headline) < 10:
+        score -= 0.35
+
+    # Boilerplate / paywall / error fragments
+    low_body = body.lower()
+    low_headline = clean_headline.lower()
+    error_phrases = [
+        "subscribe to read",
+        "sign in to continue",
+        "javascript is required",
+        "page not found",
+        "access denied",
+        "403 forbidden",
+        "404 not found",
+        "error 404",
+        "enable cookies",
+        "captcha",
+    ]
+    for phrase in error_phrases:
+        if phrase in low_body or phrase in low_headline:
+            score -= 0.60
+            break
+
+    # Lack of byline has small penalty
+    if not author:
+        score -= 0.05
+
+    return round(max(0.0, min(1.0, score)), 2)

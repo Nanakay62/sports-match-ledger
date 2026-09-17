@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertCircle, ArrowUpRight, CheckCircle2, FileQuestion, ShieldAlert, XCircle } from "lucide-react";
+import { AlertCircle, ArrowUpRight, CheckCircle2, FileQuestion, ShieldAlert } from "lucide-react";
 import { fetchAdminReviewQueue } from "@/lib/api";
 import { formatDate } from "@/lib/format";
+import { ReviewActionButtons } from "@/components/review-actions";
 
 export const metadata: Metadata = {
   title: "Human Review Queue · Editorial Control Plane",
@@ -47,8 +48,19 @@ export default async function AdminReviewQueuePage() {
               >
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule/60 pb-3">
                   <div className="flex items-center gap-2">
-                    <span className="rounded bg-rose-100 px-2 py-0.5 font-mono text-[10.5px] font-semibold text-rose-800">
-                      FLAGGED
+                    <span
+                      className={`rounded px-2 py-0.5 font-mono text-[10.5px] font-semibold uppercase ${
+                        item.priority === "critical"
+                          ? "bg-rose-600 text-paper"
+                          : item.priority === "high"
+                          ? "bg-rose-100 text-rose-800"
+                          : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {item.priority}
+                    </span>
+                    <span className="rounded bg-rule/70 px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wider text-ink-soft">
+                      {item.trigger_category?.replace("_", " ")}
                     </span>
                     <span className="font-mono text-[11px] text-ink-faint">Claim № {item.id}</span>
                   </div>
@@ -58,7 +70,7 @@ export default async function AdminReviewQueuePage() {
                 </div>
 
                 <div className="mt-3">
-                  <div className="font-mono text-[10.5px] uppercase tracking-wider text-rose-700 font-semibold">
+                  <div className="font-mono text-[11px] uppercase tracking-wider text-rose-700 font-semibold">
                     Trigger reason: {item.flag_reason}
                   </div>
                   <p className="mt-2 font-display text-lg font-medium leading-snug">
@@ -90,27 +102,7 @@ export default async function AdminReviewQueuePage() {
                     Examine original article <ArrowUpRight className="size-3" />
                   </a>
 
-                  <div className="flex flex-wrap items-center gap-2 font-mono text-[11.5px]">
-                    <span className="text-ink-faint mr-1">One-click decision:</span>
-                    <button
-                      type="button"
-                      className="rounded border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-emerald-800 hover:bg-emerald-100"
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded border border-amber-300 bg-amber-50 px-2.5 py-1 text-amber-800 hover:bg-amber-100"
-                    >
-                      Flag Dispute
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded border border-rose-300 bg-rose-50 px-2.5 py-1 text-rose-800 hover:bg-rose-100"
-                    >
-                      Issue Correction
-                    </button>
-                  </div>
+                  <ReviewActionButtons claimId={item.id} initialStatus={item.event_status} />
                 </div>
               </div>
             ))}

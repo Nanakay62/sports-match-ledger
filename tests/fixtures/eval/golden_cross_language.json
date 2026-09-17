@@ -1,0 +1,14 @@
+{
+  "name": "golden_cross_language",
+  "category": "cross_language",
+  "description": "Multi-language reporting across French and Italian preserving exact salary figures and contract expiry",
+  "expected_entities": ["Paris Saint-Germain", "Gianluigi Donnarumma"],
+  "allowed_numbers": ["2028", "12"],
+  "valid_fact_ids": ["fact-psg-renew"],
+  "source_is_speculative": false,
+  "source_evidence": [
+    "PARIS (L'Equipe) - Le Paris Saint-Germain et le gardien italien Gianluigi Donnarumma ont finalise une prolongation jusqu'en 2028.",
+    "MILANO (Gazzetta) - Donnarumma rinnova con il Paris Saint-Germain per 12 milioni a stagione fino al 2028."
+  ],
+  "generated_text": "Paris Saint-Germain reached an agreement with Gianluigi Donnarumma to extend his contract until 2028 for 12m annually [fact-psg-renew]."
+}

@@ -6,9 +6,14 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from packages.ai.budget import CostTracker
+from packages.ai.claim_validator import ClaimSchemaValidator
+from packages.ai.evidence_package import EvidencePackageBuilder
 from packages.ai.ladder import DeterministicValidator
-from packages.common.models import EventStatus
+from packages.ai.summarizer import StructuredEvidenceSummarizer
+from packages.common.validation import DeterministicValidationEngine, ValidationClaimInput
 from packages.database.repository import LedgerRepository
+from workers.pipeline.claim_extractor import StructuredClaimExtractor
+from workers.pipeline.review_router import HumanReviewRouter
 
 
 class EvidenceLaneWorker:
@@ -33,118 +38,120 @@ class EvidenceLaneWorker:
             raise ValueError(f"Event {event_id} not found in ledger")
 
         claims = LedgerRepository.list_claims(self.session, event_id)
-        distinct_outlets: set[str] = set()
-        for c in claims:
-            if c.source:
-                distinct_outlets.add(c.source.name)
-            for ev in c.evidence_sources:
-                if ev.source:
-                    distinct_outlets.add(ev.source.name)
-        source_count = len(distinct_outlets) if distinct_outlets else 1
 
-        # Determine status deterministically from evidence consensus
-        new_status = EventStatus.RUMOUR
-        if source_count == 2:
-            new_status = EventStatus.DEVELOPING
-        elif source_count >= 3:
-            new_status = EventStatus.WELL_CORROBORATED
-
-        # Check for official club/league announcement triggers
+        # Convert claims to 8-factor validation input
+        validation_claims: list[ValidationClaimInput] = []
         for c in claims:
-            t = c.claim_text.lower()
-            if "official statement" in t or "completed deal" in t or "regulatory filing" in t:
-                new_status = EventStatus.CONFIRMED
+            outlet_name = c.source.name if c.source else "Unknown"
+            rep_wilson: float | None = None
+            if c.source and c.source.wilson_lower_bound is not None:
+                rep_wilson = c.source.wilson_lower_bound
+
+            fee_val: float | None = None
+            if c.qualifiers:
+                try:
+                    q_data = json.loads(c.qualifiers) if isinstance(c.qualifiers, str) else c.qualifiers
+                    if isinstance(q_data, dict) and "fee_eur_millions" in q_data:
+                        fee_val = float(q_data["fee_eur_millions"])
+                except Exception:
+                    pass
+            if fee_val is None:
+                fee_val = StructuredClaimExtractor.extract_fee(c.claim_text)
+
+            validation_claims.append(
+                ValidationClaimInput(
+                    claim_id=c.id,
+                    outlet_name=outlet_name,
+                    authority_rank=3,
+                    reporter_name=c.reporter,
+                    reporter_wilson_score=rep_wilson,
+                    predicate=c.predicate,
+                    attribution_type=c.attribution_type or "first_party",
+                    fee_eur=fee_val,
+                    timestamp=c.timestamp or datetime.now(timezone.utc),
+                    is_superseded=c.is_superseded,
+                )
+            )
+
+        # Evaluate using the 8 deterministic validation factors
+        val_result = DeterministicValidationEngine.evaluate(validation_claims)
+        bullets = list(val_result.rationale_bullets)
+
+        # Check for mandatory human review triggers across all claims
+        for c in claims:
+            routing = HumanReviewRouter.classify_claim_context(
+                claim_text=c.claim_text,
+                source_sample_size=c.source.sample_size if c.source else 0,
+                has_contradiction=val_result.has_contradiction,
+            )
+            if routing.requires_review:
+                bullets.append(
+                    {
+                        "kind": "warn",
+                        "text": f"**Editorial review triggered ({routing.priority}):** {routing.reason}",
+                    }
+                )
                 break
 
-        # Generate status reasoning bullets
-        bullets: list[dict[str, str]] = []
-        if new_status == EventStatus.CONFIRMED:
-            bullets.append(
-                {
-                    "kind": "ok",
-                    "text": "**Official confirmation on record:** verified through official statement or league filing.",
-                }
-            )
-            bullets.append(
-                {
-                    "kind": "ok",
-                    "text": f"**Corroborated across {source_count} sources** with aligned terms logged in the ledger.",
-                }
-            )
-        elif new_status == EventStatus.WELL_CORROBORATED:
-            bullets.append(
-                {
-                    "kind": "ok",
-                    "text": f"**Corroborated across {source_count} independent desks** reporting active progress.",
-                }
-            )
-            bullets.append(
-                {
-                    "kind": "warn",
-                    "text": "**Formal execution pending:** club-to-club agreement or final paperwork remaining.",
-                }
-            )
-        elif new_status == EventStatus.DEVELOPING:
-            bullets.append(
-                {
-                    "kind": "warn",
-                    "text": f"**Active negotiations:** {source_count} outlets report concrete activity, but terms remain fluid.",
-                }
-            )
-            bullets.append(
-                {
-                    "kind": "info",
-                    "text": f"**{len(claims)} claims logged:** monitoring for independent confirmation or counter-briefings.",
-                }
-            )
-        else:
-            bullets.append(
-                {
-                    "kind": "warn",
-                    "text": "**Single-source claim:** initial report lacks independent secondary confirmation.",
-                }
-            )
-            bullets.append(
-                {
-                    "kind": "info",
-                    "text": "**Ledger holds at Rumour:** awaiting corroboration from a second independent desk.",
-                }
-            )
+            # Deterministic claim schema validation gate (§5.2)
+            triple_dict = {
+                "subject_id": c.subject_id,
+                "predicate": c.predicate,
+                "object_id": c.object_id,
+                "evidence_span": c.evidence_span,
+                "confidence": 1.0 if (c.subject_id and c.evidence_span) else 0.40,
+            }
+            claim_validation = ClaimSchemaValidator.validate_claim_triple(triple_dict)
+            if not claim_validation.is_valid and claim_validation.requires_human_review:
+                bullets.append(
+                    {
+                        "kind": "warn",
+                        "text": f"**Claim schema validation review ({c.id[:8]}):** {'; '.join(claim_validation.reasons)}",
+                    }
+                )
+                break
 
-        # Run deterministic validation check
-        entity_names = [e.name for e in event.entities]
-        validation = DeterministicValidator.validate_generation(
-            generated_text=bullets[0]["text"],
-            source_evidence=[c.claim_text for c in claims],
-            expected_entities=entity_names,
+        # Build isolated EvidencePackage (Handbook §7: physical isolation from raw article text)
+        evidence_package = EvidencePackageBuilder.build_from_event(
+            event=event,
+            claims=claims,
+            target_lang="en",
+            has_contradiction=val_result.has_contradiction,
+        )
+
+        # Generate evidence-grounded summary with citations and zero-cost cache
+        summarizer = StructuredEvidenceSummarizer(cost_tracker=self.cost_tracker)
+        summary_res = summarizer.summarize(package=evidence_package, trace_id=trace_id)
+
+        # Deterministically validate generated output against the isolated EvidencePackage
+        package_validation = DeterministicValidator.validate_package_generation(
+            generated_text=summary_res.summary_text,
+            package=evidence_package,
         )
 
         # Update event record in DB
-        event.status = new_status.value
-        event.independent_sources = source_count
+        event.status = val_result.status.value
+        event.independent_sources = val_result.independent_roots
         event.evidence_rationale_json = json.dumps(bullets)
+        if summary_res.summary_text:
+            event.summary = summary_res.summary_text
         event.updated_at = datetime.now(timezone.utc)
         self.session.commit()
-
-        # Telemetry record (L0 deterministic, €0.00 cost)
-        self.cost_tracker.record_inference(
-            trace_id=trace_id,
-            stage="evidence_lane_evaluation",
-            model_id="rung-l0-deterministic",
-            prompt_version="v1.0",
-            input_tokens=100,
-            output_tokens=50,
-            cost_eur=0.0,
-        )
 
         duration_sec = round(time.monotonic() - start_time, 3)
         return {
             "lane": "evidence_lane",
             "event_id": event.id,
             "status": event.status,
-            "sources_count": source_count,
+            "package_id": evidence_package.package_id,
+            "headline": summary_res.headline,
+            "summary": summary_res.summary_text,
+            "cited_facts": summary_res.cited_fact_ids,
+            "sources_count": val_result.independent_roots,
             "reasoning": bullets,
-            "validation_passed": validation.is_valid,
-            "cost_eur": 0.0,
+            "validation_passed": package_validation.is_valid and summary_res.validation_passed,
+            "validation_reasons": package_validation.reasons,
+            "cache_hit": summary_res.cache_hit,
+            "cost_eur": summary_res.cost_eur,
             "duration_sec": duration_sec,
         }

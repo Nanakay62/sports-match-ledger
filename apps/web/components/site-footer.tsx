@@ -36,8 +36,10 @@ export function SiteFooter() {
           <nav className="flex flex-col gap-2 font-mono text-[11.5px] uppercase tracking-[0.1em] text-ink-soft" aria-label="Footer">
             <Link className="hover:text-ink" href="/">The Ledger</Link>
             <Link className="hover:text-ink" href="/reliability">Reliability desk</Link>
+            <Link className="hover:text-ink" href="/methodology">Methodology</Link>
             <Link className="hover:text-ink" href="/corrections">Corrections</Link>
             <Link className="hover:text-ink" href="/pro">Upgrade</Link>
+            <Link className="hover:text-ink text-stone-950 font-semibold" href="/admin">Editorial Desk (Admin)</Link>
           </nav>
         </div>
         <div className="mt-8 flex flex-wrap justify-between gap-2 border-t border-rule pt-3 font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-faint">

@@ -61,3 +61,25 @@ class CostTracker:
 
     def total_inference_cost(self) -> float:
         return sum(r.cost_eur for r in self.records)
+
+    def seed_demonstration_records(self) -> None:
+        """Populates demonstration traces for development and operational review."""
+        if self.records:
+            return
+        sample_traces = [
+            ("tr-inf-901", "evidence_extraction", "gpt-4o-mini", "v1.2.0", 380, 95, 0.00021),
+            ("tr-inf-902", "predicate_clustering", "text-embedding-3-small", "v1.0.0", 520, 0, 0.00005),
+            ("tr-inf-903", "entity_resolution", "llama-3.1-8b-instruct", "v2.1.0", 410, 80, 0.00018),
+            ("tr-inf-904", "headline_synthesis", "gpt-4o-mini", "v1.4.0", 620, 140, 0.00034),
+            ("tr-inf-905", "claim_validation", "gpt-4o-mini", "v1.1.0", 450, 110, 0.00025),
+        ]
+        for tid, stage, model, prompt_ver, inp, out, cost in sample_traces:
+            self.record_inference(
+                trace_id=tid,
+                stage=stage,
+                model_id=model,
+                prompt_version=prompt_ver,
+                input_tokens=inp,
+                output_tokens=out,
+                cost_eur=cost,
+            )

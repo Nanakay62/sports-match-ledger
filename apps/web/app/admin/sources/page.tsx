@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ArrowUpRight, Check, CheckCircle2, Clock, Globe, Shield } from "lucide-react";
 import { fetchAdminSources } from "@/lib/api";
+import { SourceActions } from "@/components/source-actions";
 
 export const metadata: Metadata = {
   title: "Source Registry · Editorial Control Plane",
@@ -40,6 +41,8 @@ export default async function AdminSourcesPage({
         {[
           { label: "All sources", value: "" },
           { label: "Approved (Active)", value: "approved" },
+          { label: "Paused", value: "paused" },
+          { label: "Blocked", value: "blocked" },
           { label: "Proposed", value: "proposed" },
           { label: "Technical Review", value: "technical_review" },
           { label: "Rights Review", value: "rights_review" },
@@ -84,18 +87,23 @@ export default async function AdminSourcesPage({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <span
                       className={`rounded px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wider font-semibold ${
                         isApproved
                           ? "bg-emerald-100 text-emerald-800"
+                          : s.status === "paused"
+                          ? "bg-amber-100 text-amber-800"
+                          : s.status === "blocked"
+                          ? "bg-rose-100 text-rose-800"
                           : s.status === "rights_review"
                           ? "bg-blue-100 text-blue-800"
-                          : "bg-amber-100 text-amber-800"
+                          : "bg-stone-100 text-stone-800"
                       }`}
                     >
                       {s.status.replace("_", " ")}
                     </span>
+                    <SourceActions registryId={s.id} initialStatus={s.status} />
                   </div>
                 </div>
 
@@ -110,6 +118,15 @@ export default async function AdminSourcesPage({
                   </a>
                   <span>Category: <b className="text-ink-soft">{s.coverage_category}</b></span>
                   <span>Polling: every {s.polling_interval_minutes} min</span>
+                  {s.robots_status && (
+                    <span>Robots: <b className="font-mono text-ink-soft">{s.robots_status}</b></span>
+                  )}
+                  {s.per_domain_rate_limit_seconds && (
+                    <span>Rate limit: <b className="font-mono text-ink-soft">{s.per_domain_rate_limit_seconds}s</b></span>
+                  )}
+                  {s.publisher_contact && (
+                    <span>Contact: <b className="font-mono text-ink-soft">{s.publisher_contact}</b></span>
+                  )}
                   {s.technical_check_passed && (
                     <span className="inline-flex items-center gap-1 text-emerald-700">
                       <Check className="size-3" /> Tech pass
@@ -122,8 +139,10 @@ export default async function AdminSourcesPage({
                   )}
                 </div>
 
-                {(s.technical_notes || s.rights_notes) && (
-                  <div className="mt-2 rounded bg-rule/30 p-2 text-[12px] text-ink-soft">
+                {(s.pause_reason || s.block_reason || s.technical_notes || s.rights_notes) && (
+                  <div className="mt-2 rounded bg-rule/30 p-2 text-[12px] text-ink-soft space-y-1">
+                    {s.pause_reason && <div className="text-amber-800">• <b>Pause reason:</b> {s.pause_reason}</div>}
+                    {s.block_reason && <div className="text-rose-800">• <b>Block reason:</b> {s.block_reason}</div>}
                     {s.technical_notes && <div>• <b>Technical note:</b> {s.technical_notes}</div>}
                     {s.rights_notes && <div>• <b>Rights review:</b> {s.rights_notes}</div>}
                   </div>
@@ -136,3 +155,4 @@ export default async function AdminSourcesPage({
     </div>
   );
 }
+

@@ -1,12 +1,25 @@
 import Link from "next/link";
-import { ShieldCheck, Sliders, Users, DollarSign, Database, ExternalLink } from "lucide-react";
+import {
+  AlertOctagon,
+  Database,
+  DollarSign,
+  ExternalLink,
+  Network,
+  ShieldAlert,
+  ShieldCheck,
+  Sliders,
+  Users,
+} from "lucide-react";
 
 const ADMIN_LINKS = [
   { href: "/admin", label: "Overview", icon: Sliders },
+  { href: "/admin/clusters", label: "Cluster Inspection", icon: Network },
   { href: "/admin/sources", label: "Source Registry", icon: Database },
   { href: "/admin/review", label: "Review Queue", icon: ShieldCheck },
   { href: "/admin/entities", label: "Entity Corrections", icon: Users },
   { href: "/admin/cost", label: "Cost Architecture", icon: DollarSign },
+  { href: "/admin/quarantine", label: "Quarantine Pool", icon: ShieldAlert },
+  { href: "/admin/dead-letters", label: "Dead-Letter Queue", icon: AlertOctagon },
 ];
 
 export default function AdminLayout({

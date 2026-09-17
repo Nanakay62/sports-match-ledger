@@ -3,6 +3,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from packages.common.scoring import (
+    evaluate_component_accuracy,
+    evaluate_dual_reliability,
     evaluate_reliability,
     recency_decay_weight,
     wilson_lower_bound,
@@ -71,3 +73,58 @@ def test_recency_decay():
     t_180d_ago = now - timedelta(days=180)
     w_180d = recency_decay_weight(t_180d_ago, now, half_life_days=half_life)
     assert pytest.approx(w_180d, rel=1e-2) == 0.25
+
+
+def test_evaluate_component_accuracy():
+    resolutions = [
+        {"entity_correct": True, "direction_correct": True, "timing_correct": True, "fee_correct": True},
+        {"entity_correct": True, "direction_correct": True, "timing_correct": False, "fee_correct": False},
+        {"entity_correct": True, "direction_correct": False, "timing_correct": True, "fee_correct": None},
+        {"entity_correct": False, "direction_correct": False, "timing_correct": None, "fee_correct": None},
+    ]
+    comp = evaluate_component_accuracy(resolutions)
+
+    # Entity: 3 of 4 = 0.75
+    assert comp.entity_accuracy == 0.75
+    assert comp.entity_evaluable == 4
+
+    # Direction: 2 of 4 = 0.50
+    assert comp.direction_accuracy == 0.50
+    assert comp.direction_evaluable == 4
+
+    # Timing: 2 of 3 = 0.6667
+    assert comp.timing_accuracy == pytest.approx(0.6667, abs=1e-3)
+    assert comp.timing_evaluable == 3
+
+    # Fee: 1 of 2 = 0.50
+    assert comp.fee_accuracy == 0.50
+    assert comp.fee_evaluable == 2
+
+
+def test_evaluate_component_accuracy_empty():
+    comp = evaluate_component_accuracy([])
+    assert comp.entity_accuracy is None
+    assert comp.direction_accuracy is None
+    assert comp.timing_accuracy is None
+    assert comp.fee_accuracy is None
+    assert comp.entity_evaluable == 0
+
+
+def test_evaluate_dual_reliability():
+    dual = evaluate_dual_reliability(
+        subject_name="Sky Sports",
+        subject_type="outlet",
+        correct_count_overall=18,
+        sample_size_overall=20,
+        correct_count_original=14,
+        sample_size_original=15,
+        correct_count_aggregation=4,
+        sample_size_aggregation=5,
+    )
+    assert dual.overall.wilson_lower_bound is not None
+    assert dual.original.wilson_lower_bound is not None
+    # Original (14/15) is sufficient record (>=10)
+    assert dual.original.is_insufficient_record is False
+    # Aggregation (4/5) is insufficient record (<10)
+    assert dual.aggregation.is_insufficient_record is True
+    assert dual.aggregation.wilson_lower_bound is None

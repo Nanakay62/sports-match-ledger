@@ -60,3 +60,10 @@ sports_news_ai.db
 .DS_Store
 Thumbs.db
 Desktop.ini
+~$*
+
+# Telemetry & Runtime traces
+data/
+mlruns/
+_newsletters/
+

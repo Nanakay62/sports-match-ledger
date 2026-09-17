@@ -1,0 +1,14 @@
+{
+  "name": "golden_rumour_multi_evidence",
+  "category": "rumour_multi_evidence",
+  "description": "Speculative transfer enquiry corroborated across multiple Tier 2/3 reporting sources",
+  "expected_entities": ["Chelsea", "Victor Osimhen"],
+  "allowed_numbers": ["85"],
+  "valid_fact_ids": ["fact-osimhen-talks"],
+  "source_is_speculative": true,
+  "source_evidence": [
+    "Chelsea are reportedly considering an €85m approach for Napoli striker Victor Osimhen before the deadline.",
+    "Sky Sports understands preliminary talks have taken place between Chelsea intermediaries and the player's camp."
+  ],
+  "generated_text": "Chelsea are reportedly considering an €85m approach for striker Victor Osimhen [fact-osimhen-talks]."
+}

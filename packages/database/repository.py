@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
@@ -11,12 +12,14 @@ from .models import (
     Base,
     ClaimEvidenceModel,
     ClaimModel,
+    EditorialEvaluationLogModel,
     EventEntityModel,
     EventModel,
     EventTranslationModel,
     ReporterAliasModel,
     ReporterModel,
     ReporterOutletModel,
+    ResolutionModel,
     SourceModel,
     SourceRegistryModel,
     SourceRegistryStatus,
@@ -28,8 +31,101 @@ class LedgerRepository:
 
     @staticmethod
     def init_db(engine) -> None:
-        """Initializes database schema tables."""
+        """Initializes database schema tables and runs safe schema migrations."""
         Base.metadata.create_all(bind=engine)
+        if engine.dialect.name == "sqlite":
+            with engine.connect() as conn:
+                # Check claims table columns
+                res_claims = conn.exec_driver_sql("PRAGMA table_info(claims)").fetchall()
+                existing_cols = {row[1] for row in res_claims}
+                if existing_cols:
+                    new_cols = [
+                        ("subject_id", "VARCHAR(64)"),
+                        ("predicate", "VARCHAR(64)"),
+                        ("object_id", "VARCHAR(64)"),
+                        ("qualifiers", "TEXT"),
+                        ("evidence_span", "TEXT"),
+                        ("resolvable", "BOOLEAN DEFAULT 1"),
+                        ("resolution_class", "VARCHAR(32) DEFAULT 'binary'"),
+                        ("schema_version", "VARCHAR(16) DEFAULT '5.2.0'"),
+                    ]
+                    for col_name, col_type in new_cols:
+                        if col_name not in existing_cols:
+                            conn.exec_driver_sql(f"ALTER TABLE claims ADD COLUMN {col_name} {col_type}")
+
+                # Check source_registry table columns
+                res_reg = conn.exec_driver_sql("PRAGMA table_info(source_registry)").fetchall()
+                existing_reg_cols = {row[1] for row in res_reg}
+                if existing_reg_cols:
+                    new_reg_cols = [
+                        ("robots_status", "VARCHAR(32) DEFAULT 'allowed'"),
+                        ("terms_review_date", "DATETIME"),
+                        ("publisher_contact", "VARCHAR(256)"),
+                        ("per_domain_rate_limit_seconds", "FLOAT DEFAULT 1.0"),
+                        ("pause_reason", "TEXT"),
+                        ("block_reason", "TEXT"),
+                    ]
+                    for col_name, col_type in new_reg_cols:
+                        if col_name not in existing_reg_cols:
+                            conn.exec_driver_sql(f"ALTER TABLE source_registry ADD COLUMN {col_name} {col_type}")
+
+                # Check resolutions table columns (component scoring)
+                res_resolutions = conn.exec_driver_sql("PRAGMA table_info(resolutions)").fetchall()
+                existing_res_cols = {row[1] for row in res_resolutions}
+                if existing_res_cols:
+                    new_res_cols = [
+                        ("entity_correct", "BOOLEAN"),
+                        ("direction_correct", "BOOLEAN"),
+                        ("timing_correct", "BOOLEAN"),
+                        ("fee_correct", "BOOLEAN"),
+                    ]
+                    for col_name, col_type in new_res_cols:
+                        if col_name not in existing_res_cols:
+                            conn.exec_driver_sql(f"ALTER TABLE resolutions ADD COLUMN {col_name} {col_type}")
+
+                # Check sources table columns (dual reliability: original vs aggregation)
+                res_sources = conn.exec_driver_sql("PRAGMA table_info(sources)").fetchall()
+                existing_src_cols = {row[1] for row in res_sources}
+                if existing_src_cols:
+                    new_src_cols = [
+                        ("sample_size_original", "INTEGER DEFAULT 0"),
+                        ("correct_count_original", "INTEGER DEFAULT 0"),
+                        ("wilson_lower_bound_original", "FLOAT"),
+                        ("sample_size_aggregation", "INTEGER DEFAULT 0"),
+                        ("correct_count_aggregation", "INTEGER DEFAULT 0"),
+                        ("wilson_lower_bound_aggregation", "FLOAT"),
+                    ]
+                    for col_name, col_type in new_src_cols:
+                        if col_name not in existing_src_cols:
+                            conn.exec_driver_sql(f"ALTER TABLE sources ADD COLUMN {col_name} {col_type}")
+
+                # Check events table columns (dispute cluster-splitting)
+                res_events = conn.exec_driver_sql("PRAGMA table_info(events)").fetchall()
+                existing_event_cols = {row[1] for row in res_events}
+                if existing_event_cols:
+                    new_event_cols = [
+                        ("disputed_by_event_id", "VARCHAR(64)"),
+                        ("dispute_status", "VARCHAR(32)"),
+                    ]
+                    for col_name, col_type in new_event_cols:
+                        if col_name not in existing_event_cols:
+                            conn.exec_driver_sql(f"ALTER TABLE events ADD COLUMN {col_name} {col_type}")
+
+                # Check source_registry table columns (compliance metadata)
+                res_reg = conn.exec_driver_sql("PRAGMA table_info(source_registry)").fetchall()
+                existing_reg_cols = {row[1] for row in res_reg}
+                if existing_reg_cols:
+                    new_reg_cols = [
+                        ("robots_status", "VARCHAR(32) DEFAULT 'allowed'"),
+                        ("terms_review_date", "DATETIME"),
+                        ("publisher_contact", "VARCHAR(256)"),
+                        ("per_domain_rate_limit_seconds", "FLOAT DEFAULT 1.0"),
+                    ]
+                    for col_name, col_type in new_reg_cols:
+                        if col_name not in existing_reg_cols:
+                            conn.exec_driver_sql(f"ALTER TABLE source_registry ADD COLUMN {col_name} {col_type}")
+
+                conn.commit()
 
     @staticmethod
     def get_or_create_source(
@@ -248,6 +344,8 @@ class LedgerRepository:
         reference_time: datetime | None = None,
         cited_source: str | None = None,
         entity_names: list[str] | None = None,
+        language: str | None = None,
+        predicate: str | None = None,
     ) -> tuple[ClaimModel | None, float]:
         """Searches existing claims across all events within a rolling time window
         to detect cross-feed syndications, near-duplicates, or wire republishing.
@@ -290,20 +388,19 @@ class LedgerRepository:
                 .all()
             )
         except Exception:
-            candidates = []
-
-        # If window query returned empty, retrieve recent pool
-        if not candidates:
             candidates = session.execute(select(ClaimModel).order_by(desc(ClaimModel.timestamp)).limit(50)).scalars().all()
 
         # 4. Compare candidate claims
         for candidate in candidates:
-            if candidate.content_hash and candidate.content_hash == content_hash:
-                return candidate, 1.0
+            # Skip if candidate has no event attached
+            if not candidate.event_id:
+                continue
 
-            is_match, similarity = is_near_duplicate(text, candidate.claim_text)
-            if is_match:
-                return candidate, similarity
+            # 4. Fuzzy text similarity match
+            if candidate.claim_text:
+                match, score = is_near_duplicate(candidate.claim_text, text)
+                if match:
+                    return candidate, score
 
             # 5. Check secondary attribution cue match:
             # If the incoming article cites an outlet or reporter, and candidate belongs to that outlet/reporter,
@@ -317,6 +414,50 @@ class LedgerRepository:
                     incoming_entities = {n.lower() for n in entity_names}
                     if cand_entities & incoming_entities:
                         return candidate, 0.85
+
+            # 6. Cross-language hard-fact clustering (§4.3):
+            # When articles are in different languages, text similarity is low, but if 2+ canonical
+            # entities match (e.g. Club + Player) within the time window, collapse to the same cluster.
+            if (
+                language
+                and candidate.language
+                and candidate.language.lower() != language.lower()
+                and entity_names
+                and len(entity_names) >= 2
+            ):
+                cand_event = candidate.event
+                cand_entities = {e.name.lower() for e in cand_event.entities} if cand_event else set()
+                incoming_entities = {n.lower() for n in entity_names}
+                shared = cand_entities & incoming_entities
+                if len(shared) >= 2:
+                    return candidate, 0.88
+
+            # 7. Conflicting predicate candidate match (Handbook §14):
+            # If candidate and incoming claim assert conflicting predicates (e.g. transfer_denied vs submits_bid)
+            # and share 2+ canonical entities, return candidate to trigger cluster split.
+            CONFLICTING_PAIRS = {
+                ("transfer_denied", "official_signing"),
+                ("transfer_denied", "agrees_terms"),
+                ("transfer_denied", "submits_bid"),
+                ("transfer_denied", "medical_scheduled"),
+                ("official_signing", "transfer_denied"),
+                ("agrees_terms", "transfer_denied"),
+                ("submits_bid", "transfer_denied"),
+                ("medical_scheduled", "transfer_denied"),
+            }
+            if (
+                predicate
+                and candidate.predicate
+                and (predicate, candidate.predicate) in CONFLICTING_PAIRS
+                and entity_names
+                and len(entity_names) >= 2
+            ):
+                cand_event = candidate.event
+                cand_entities = {e.name.lower() for e in cand_event.entities} if cand_event else set()
+                incoming_entities = {n.lower() for n in entity_names}
+                shared = cand_entities & incoming_entities
+                if len(shared) >= 2:
+                    return candidate, 0.85
 
         return None, 0.0
 
@@ -439,6 +580,14 @@ class LedgerRepository:
         timestamp: datetime | None = None,
         content_hash: str | None = None,
         simhash: str | None = None,
+        subject_id: str | None = None,
+        predicate: str | None = None,
+        object_id: str | None = None,
+        qualifiers: dict[str, Any] | str | None = None,
+        evidence_span: str | None = None,
+        resolvable: bool = True,
+        resolution_class: str = "binary",
+        schema_version: str = "5.2.0",
     ) -> ClaimModel:
         """Appends an immutable claim to the ledger. Claims can never be updated or deleted."""
         existing = session.execute(select(ClaimModel).where(ClaimModel.id == claim_id)).scalar_one_or_none()
@@ -455,6 +604,8 @@ class LedgerRepository:
         if timestamp is None:
             timestamp = datetime.now(timezone.utc)
 
+        qualifiers_str = json.dumps(qualifiers) if isinstance(qualifiers, dict) else qualifiers
+
         claim = ClaimModel(
             id=claim_id,
             event_id=event_id,
@@ -462,6 +613,14 @@ class LedgerRepository:
             reporter_id=reporter_id,
             reporter=reporter,
             claim_text=claim_text,
+            subject_id=subject_id,
+            predicate=predicate,
+            object_id=object_id,
+            qualifiers=qualifiers_str,
+            evidence_span=evidence_span,
+            resolvable=resolvable,
+            resolution_class=resolution_class,
+            schema_version=schema_version,
             attribution=attribution,
             attribution_type=attribution_type,
             language=language,
@@ -573,6 +732,27 @@ class LedgerRepository:
         return event
 
     @staticmethod
+    def link_event_dispute(
+        session: Session,
+        event_a_id: str,
+        event_b_id: str,
+    ) -> None:
+        """Links two conflicting events in a dispute relationship and sets status to Disputed."""
+        ev_a = session.execute(select(EventModel).where(EventModel.id == event_a_id)).scalar_one_or_none()
+        ev_b = session.execute(select(EventModel).where(EventModel.id == event_b_id)).scalar_one_or_none()
+        if ev_a:
+            ev_a.disputed_by_event_id = event_b_id
+            ev_a.dispute_status = "active"
+            ev_a.status = EventStatus.DISPUTED.value
+            ev_a.updated_at = datetime.now(timezone.utc)
+        if ev_b:
+            ev_b.disputed_by_event_id = event_a_id
+            ev_b.dispute_status = "active"
+            ev_b.status = EventStatus.DISPUTED.value
+            ev_b.updated_at = datetime.now(timezone.utc)
+        session.flush()
+
+    @staticmethod
     def list_events(
         session: Session,
         status: str | None = None,
@@ -592,6 +772,28 @@ class LedgerRepository:
         return list(
             session.execute(select(ClaimModel).where(ClaimModel.event_id == event_id).order_by(desc(ClaimModel.timestamp))).scalars().all()
         )
+
+    @staticmethod
+    def query_claims(
+        session: Session,
+        subject_id: str | None = None,
+        predicate: str | None = None,
+        object_id: str | None = None,
+        attribution_type: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[ClaimModel]:
+        stmt = select(ClaimModel)
+        if subject_id:
+            stmt = stmt.where(ClaimModel.subject_id == subject_id)
+        if predicate:
+            stmt = stmt.where(ClaimModel.predicate == predicate)
+        if object_id:
+            stmt = stmt.where(ClaimModel.object_id == object_id)
+        if attribution_type:
+            stmt = stmt.where(ClaimModel.attribution_type == attribution_type)
+        stmt = stmt.order_by(desc(ClaimModel.timestamp)).offset(offset).limit(limit)
+        return list(session.execute(stmt).scalars().all())
 
     @staticmethod
     def get_or_create_translation(
@@ -660,6 +862,76 @@ class LedgerRepository:
             session.execute(
                 select(EventTranslationModel).where(EventTranslationModel.event_id == event_id).order_by(EventTranslationModel.language)
             )
+            .scalars()
+            .all()
+        )
+
+    @staticmethod
+    def find_unresolved_claims(
+        session: Session,
+        subject_id: str | None = None,
+        object_id: str | None = None,
+        predicate: str | None = None,
+    ) -> list[ClaimModel]:
+        """Finds active (not superseded) claims that do not yet have an outcome resolution."""
+        stmt = (
+            select(ClaimModel)
+            .outerjoin(ResolutionModel, ClaimModel.id == ResolutionModel.claim_id)
+            .where(
+                ClaimModel.is_superseded.is_(False),
+                ResolutionModel.id.is_(None),
+            )
+        )
+        if subject_id:
+            stmt = stmt.where(ClaimModel.subject_id == subject_id)
+        if object_id:
+            stmt = stmt.where(ClaimModel.object_id == object_id)
+        if predicate:
+            stmt = stmt.where(ClaimModel.predicate == predicate)
+        return list(session.execute(stmt).scalars().all())
+
+    @staticmethod
+    def log_editorial_decision(
+        session: Session,
+        claim_id: str,
+        event_id: str,
+        action: str,
+        trigger_category: str | None = None,
+        editor_notes: str | None = None,
+        input_context: dict[str, Any] | str | None = None,
+    ) -> EditorialEvaluationLogModel:
+        """Appends a human editorial decision as a labelled evaluation example."""
+        import uuid
+
+        context_json: str | None = None
+        if isinstance(input_context, dict):
+            context_json = json.dumps(input_context)
+        elif isinstance(input_context, str):
+            context_json = input_context
+
+        log_id = f"eval-{uuid.uuid4().hex[:12]}"
+        log_entry = EditorialEvaluationLogModel(
+            id=log_id,
+            claim_id=claim_id,
+            event_id=event_id,
+            action=action,
+            trigger_category=trigger_category,
+            editor_notes=editor_notes,
+            input_context_json=context_json,
+            created_at=datetime.now(timezone.utc),
+        )
+        session.add(log_entry)
+        session.flush()
+        return log_entry
+
+    @staticmethod
+    def list_editorial_evaluations(
+        session: Session,
+        limit: int = 50,
+    ) -> list[EditorialEvaluationLogModel]:
+        """Returns recent editorial decisions logged for evaluation."""
+        return list(
+            session.execute(select(EditorialEvaluationLogModel).order_by(EditorialEvaluationLogModel.created_at.desc()).limit(limit))
             .scalars()
             .all()
         )

@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Database, DollarSign, ShieldAlert, Users } from "lucide-react";
+import {
+  AlertOctagon,
+  ArrowRight,
+  Database,
+  DollarSign,
+  ShieldAlert,
+  Users,
+} from "lucide-react";
 import { fetchAdminOverview } from "@/lib/api";
 
 export const metadata: Metadata = {
@@ -61,6 +68,43 @@ export default async function AdminOverviewPage() {
         </div>
       </section>
 
+      {/* Pipeline Health & Resilience KPIs */}
+      <section className="mt-4 grid grid-cols-2 gap-px border border-rule bg-rule md:grid-cols-2" aria-label="Resilience Metrics">
+        <div className="bg-paper p-5">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">
+              Quarantine Ingest Pool
+            </span>
+            <span className="rounded bg-amber-100 px-2 py-0.5 font-mono text-[10px] text-amber-800">
+              Handbook §11.4
+            </span>
+          </div>
+          <div className="mt-2 font-mono text-3xl font-medium tabular-nums text-amber-700">
+            {stats.quarantined_documents ?? 0}
+          </div>
+          <p className="mt-1 text-[12px] text-ink-soft">
+            Low-confidence &lt;0.50 payloads isolated prior to ledger entry.
+          </p>
+        </div>
+
+        <div className="bg-paper p-5">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">
+              Dead-Letter Queue
+            </span>
+            <span className="rounded bg-rose-100 px-2 py-0.5 font-mono text-[10px] text-rose-800">
+              Handbook §11.5
+            </span>
+          </div>
+          <div className="mt-2 font-mono text-3xl font-medium tabular-nums text-rose-700">
+            {stats.dead_letter_jobs ?? 0}
+          </div>
+          <p className="mt-1 text-[12px] text-ink-soft">
+            Exhausted background jobs available for diagnostic inspection & replay.
+          </p>
+        </div>
+      </section>
+
       {/* Cost KPIs */}
       <section className="mt-6 grid grid-cols-1 gap-px border border-rule bg-rule md:grid-cols-2" aria-label="Cost Metrics">
         <div className="bg-paper p-5">
@@ -99,7 +143,7 @@ export default async function AdminOverviewPage() {
           Editorial Modules
         </h2>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Link
             href="/admin/sources"
             className="group block border border-rule bg-paper p-5 transition-colors hover:border-ink"
@@ -137,6 +181,42 @@ export default async function AdminOverviewPage() {
           </Link>
 
           <Link
+            href="/admin/quarantine"
+            className="group block border border-rule bg-paper p-5 transition-colors hover:border-ink"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="size-4 text-amber-600" />
+                <h3 className="font-display text-lg font-medium group-hover:underline">
+                  Quarantine Pool
+                </h3>
+              </div>
+              <ArrowRight className="size-4 text-ink-faint transition-transform group-hover:translate-x-1" />
+            </div>
+            <p className="mt-2 text-[13px] text-ink-soft">
+              Inspect diverted low-confidence payloads and paywalled articles blocked before ledger entry.
+            </p>
+          </Link>
+
+          <Link
+            href="/admin/dead-letters"
+            className="group block border border-rule bg-paper p-5 transition-colors hover:border-ink"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertOctagon className="size-4 text-rose-600" />
+                <h3 className="font-display text-lg font-medium group-hover:underline">
+                  Dead-Letter Queue
+                </h3>
+              </div>
+              <ArrowRight className="size-4 text-ink-faint transition-transform group-hover:translate-x-1" />
+            </div>
+            <p className="mt-2 text-[13px] text-ink-soft">
+              Inspect diagnostic exceptions from failed worker tasks and trigger manual job replay.
+            </p>
+          </Link>
+
+          <Link
             href="/admin/entities"
             className="group block border border-rule bg-paper p-5 transition-colors hover:border-ink"
           >
@@ -144,7 +224,7 @@ export default async function AdminOverviewPage() {
               <div className="flex items-center gap-2">
                 <Users className="size-4 text-ink-soft" />
                 <h3 className="font-display text-lg font-medium group-hover:underline">
-                  Entity Corrections & Graph
+                  Entity Corrections
                 </h3>
               </div>
               <ArrowRight className="size-4 text-ink-faint transition-transform group-hover:translate-x-1" />
@@ -162,7 +242,7 @@ export default async function AdminOverviewPage() {
               <div className="flex items-center gap-2">
                 <DollarSign className="size-4 text-emerald-600" />
                 <h3 className="font-display text-lg font-medium group-hover:underline">
-                  Cost & Inference Telemetry
+                  Cost Architecture
                 </h3>
               </div>
               <ArrowRight className="size-4 text-ink-faint transition-transform group-hover:translate-x-1" />

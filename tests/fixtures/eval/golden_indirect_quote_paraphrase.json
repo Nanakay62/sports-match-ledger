@@ -1,0 +1,13 @@
+{
+  "name": "golden_indirect_quote_paraphrase",
+  "category": "indirect_quote_paraphrase",
+  "description": "Press conference comments paraphrased faithfully without fabricating direct quotes or motive",
+  "expected_entities": ["Arsenal", "Mikel Arteta"],
+  "allowed_numbers": ["3"],
+  "valid_fact_ids": ["fact-arteta-press"],
+  "source_is_speculative": false,
+  "source_evidence": [
+    "Speaking to reporters at the Sobha Realty Training Centre, Arsenal manager Mikel Arteta explained that the medical staff will assess 3 first-team players ahead of Saturday's match."
+  ],
+  "generated_text": "Arsenal manager Mikel Arteta stated the squad will assess 3 players ahead of the weekend [fact-arteta-press]."
+}

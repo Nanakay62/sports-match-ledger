@@ -1,0 +1,14 @@
+{
+  "name": "golden_predicate_dispute",
+  "category": "predicate_dispute",
+  "description": "Contradictory assertions where official club briefing denies a deal reported by journalists",
+  "expected_entities": ["Real Madrid", "Alphonso Davies"],
+  "allowed_numbers": ["2026"],
+  "valid_fact_ids": ["fact-madrid-denial"],
+  "source_is_speculative": true,
+  "source_evidence": [
+    "Spanish media claim Alphonso Davies has agreed verbal terms with Real Madrid for 2026.",
+    "Real Madrid spokespersons officially dismiss any agreement or contractual discussions with Bayern Munich defender Alphonso Davies."
+  ],
+  "generated_text": "Real Madrid have reportedly denied reaching terms with Alphonso Davies despite contrary media reports [fact-madrid-denial]."
+}

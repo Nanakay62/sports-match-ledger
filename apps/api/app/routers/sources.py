@@ -29,6 +29,12 @@ def list_source_registry(
             "rights_review_passed": s.rights_review_passed,
             "rights_notes": s.rights_notes,
             "polling_interval_minutes": s.polling_interval_minutes,
+            "robots_status": s.robots_status,
+            "terms_review_date": s.terms_review_date.isoformat() if s.terms_review_date else None,
+            "publisher_contact": s.publisher_contact,
+            "per_domain_rate_limit_seconds": s.per_domain_rate_limit_seconds,
+            "pause_reason": s.pause_reason,
+            "block_reason": s.block_reason,
             "approved_at": s.approved_at.isoformat() if s.approved_at else None,
             "created_at": s.created_at.isoformat() if s.created_at else None,
         }

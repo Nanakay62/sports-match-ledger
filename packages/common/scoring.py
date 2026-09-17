@@ -1,6 +1,7 @@
 import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -98,4 +99,117 @@ def evaluate_reliability(
         wilson_lower_bound=round(w_score, 4),
         is_insufficient_record=False,
         unweighted_accuracy=round(correct_count / sample_size, 4),
+    )
+
+
+@dataclass(frozen=True)
+class ComponentAccuracy:
+    """Component scoring breakdown preserving partial correctness."""
+
+    entity_accuracy: float | None
+    direction_accuracy: float | None
+    timing_accuracy: float | None
+    fee_accuracy: float | None
+    entity_evaluable: int
+    direction_evaluable: int
+    timing_evaluable: int
+    fee_evaluable: int
+
+
+def evaluate_component_accuracy(resolutions: list[Any]) -> ComponentAccuracy:
+    """Evaluates component accuracy across a set of resolution records.
+
+    Accepts list of ResolutionModel instances or dictionaries containing
+    entity_correct, direction_correct, timing_correct, fee_correct.
+    """
+    counts: dict[str, list[int]] = {
+        "entity": [0, 0],  # [correct, evaluable]
+        "direction": [0, 0],
+        "timing": [0, 0],
+        "fee": [0, 0],
+    }
+    for r in resolutions:
+        for comp in ("entity", "direction", "timing", "fee"):
+            attr_name = f"{comp}_correct"
+            val = getattr(r, attr_name, None) if hasattr(r, attr_name) else (r.get(attr_name) if isinstance(r, dict) else None)
+            if val is not None:
+                counts[comp][1] += 1
+                if val is True:
+                    counts[comp][0] += 1
+
+    def calc_acc(comp: str) -> float | None:
+        correct, total = counts[comp]
+        return round(correct / total, 4) if total > 0 else None
+
+    return ComponentAccuracy(
+        entity_accuracy=calc_acc("entity"),
+        direction_accuracy=calc_acc("direction"),
+        timing_accuracy=calc_acc("timing"),
+        fee_accuracy=calc_acc("fee"),
+        entity_evaluable=counts["entity"][1],
+        direction_evaluable=counts["direction"][1],
+        timing_evaluable=counts["timing"][1],
+        fee_evaluable=counts["fee"][1],
+    )
+
+
+@dataclass(frozen=True)
+class DualReliabilityMetrics:
+    """Dual reliability record isolating original reporting from repetition/aggregation."""
+
+    subject_name: str
+    subject_type: str
+    overall: ReliabilityMetrics
+    original: ReliabilityMetrics
+    aggregation: ReliabilityMetrics
+    component_accuracy: ComponentAccuracy | None = None
+
+
+def evaluate_dual_reliability(
+    subject_name: str,
+    subject_type: str,
+    correct_count_overall: int,
+    sample_size_overall: int,
+    correct_count_original: int,
+    sample_size_original: int,
+    correct_count_aggregation: int,
+    sample_size_aggregation: int,
+    resolutions: list[Any] | None = None,
+    min_sample_threshold: int = 10,
+    confidence: float = 0.95,
+) -> DualReliabilityMetrics:
+    """Evaluates separate reliability scores for original scoops and syndication/aggregation."""
+    overall = evaluate_reliability(
+        subject_name=subject_name,
+        subject_type=subject_type,
+        correct_count=correct_count_overall,
+        sample_size=sample_size_overall,
+        min_sample_threshold=min_sample_threshold,
+        confidence=confidence,
+    )
+    original = evaluate_reliability(
+        subject_name=subject_name,
+        subject_type=subject_type,
+        correct_count=correct_count_original,
+        sample_size=sample_size_original,
+        min_sample_threshold=min_sample_threshold,
+        confidence=confidence,
+    )
+    aggregation = evaluate_reliability(
+        subject_name=subject_name,
+        subject_type=subject_type,
+        correct_count=correct_count_aggregation,
+        sample_size=sample_size_aggregation,
+        min_sample_threshold=min_sample_threshold,
+        confidence=confidence,
+    )
+    comp_acc = evaluate_component_accuracy(resolutions) if resolutions else None
+
+    return DualReliabilityMetrics(
+        subject_name=subject_name,
+        subject_type=subject_type,
+        overall=overall,
+        original=original,
+        aggregation=aggregation,
+        component_accuracy=comp_acc,
     )

@@ -40,7 +40,6 @@ function MastheadContent() {
     { href: `/${querySuffix}`, label: t.navLedger, activeMatch: "/" },
     { href: `/reliability${querySuffix}`, label: t.navReliability, activeMatch: "/reliability" },
     { href: `/corrections${querySuffix}`, label: t.navCorrections, activeMatch: "/corrections" },
-    { href: `/pro${querySuffix}`, label: t.navUpgrade, activeMatch: "/pro" },
   ];
 
   return (
@@ -83,14 +82,8 @@ function MastheadContent() {
             ))}
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href={`/pro${querySuffix}`}
-              className="hidden rounded-[3px] border border-dashed border-rule-strong px-2 py-1 font-mono text-[10.5px] uppercase tracking-[0.1em] text-ink-faint transition-colors hover:border-ink hover:text-ink sm:inline"
-            >
-              {t.watchlistFree}
-            </Link>
             <Button asChild size="sm" className="bg-ink font-medium text-paper hover:bg-ledger-deep">
-              <Link href={`/pro${querySuffix}`}>{t.goPro}</Link>
+              <Link href={`/pro${querySuffix}`}>{t.navUpgrade}</Link>
             </Button>
           </div>
         </div>

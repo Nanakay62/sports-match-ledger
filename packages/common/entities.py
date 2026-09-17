@@ -7,12 +7,23 @@ GLOSSARY_VERSION = "v1"
 
 
 @dataclass(frozen=True)
+class EntityAliasRecord:
+    """Metadata tracking alias confidence and origin provenance per Handbook §15."""
+
+    surface_form: str
+    confidence: float = 1.0  # 1.0 = verified seed/admin, lower = auto-extracted
+    provenance: str = "seed_data"  # "seed_data", "wikidata", "admin_override"
+    language: str | None = None
+
+
+@dataclass(frozen=True)
 class CanonicalEntity:
     id: str
     name: str
     type: EntityType
     sport: str = "Football"
     aliases: list[str] = field(default_factory=list)
+    alias_records: list[EntityAliasRecord] = field(default_factory=list)
     localized_names: dict[str, str] = field(default_factory=dict)
 
 
@@ -343,14 +354,28 @@ class EntityGraph:
     def __init__(self, entities: list[CanonicalEntity] | None = None):
         self._entities_by_id: dict[str, CanonicalEntity] = {}
         self._alias_map: dict[str, CanonicalEntity] = {}
+        self._alias_meta_map: dict[str, EntityAliasRecord] = {}
         for entity in entities or SEED_ENTITIES:
             self.register_entity(entity)
 
     def register_entity(self, entity: CanonicalEntity) -> None:
         self._entities_by_id[entity.id] = entity
         self._alias_map[entity.name.lower()] = entity
+        self._alias_meta_map[entity.name.lower()] = EntityAliasRecord(
+            surface_form=entity.name,
+            confidence=1.0,
+            provenance="canonical",
+        )
         for alias in entity.aliases:
             self._alias_map[alias.lower()] = entity
+            self._alias_meta_map[alias.lower()] = EntityAliasRecord(
+                surface_form=alias,
+                confidence=1.0,
+                provenance="seed_data",
+            )
+        for rec in entity.alias_records:
+            self._alias_map[rec.surface_form.lower()] = entity
+            self._alias_meta_map[rec.surface_form.lower()] = rec
 
     def get_entity_by_id(self, entity_id: str) -> CanonicalEntity | None:
         """Retrieves canonical entity by ID."""
@@ -358,6 +383,10 @@ class EntityGraph:
 
     def resolve_alias(self, name_or_alias: str) -> CanonicalEntity | None:
         return self._alias_map.get(name_or_alias.strip().lower())
+
+    def get_alias_metadata(self, name_or_alias: str) -> EntityAliasRecord | None:
+        """Retrieves confidence score and provenance origin for an entity alias."""
+        return self._alias_meta_map.get(name_or_alias.strip().lower())
 
     def get_localized_glossary(self, entity_ids: list[str], target_lang: str) -> dict[str, str]:
         """Returns mapping from source entity names and aliases to the target language canonical term.

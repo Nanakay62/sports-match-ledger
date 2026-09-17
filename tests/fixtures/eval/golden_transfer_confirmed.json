@@ -1,0 +1,13 @@
+{
+  "name": "golden_transfer_confirmed",
+  "category": "official_signing",
+  "description": "Authoritative club announcement of an official transfer with confirmed fee and contract length",
+  "expected_entities": ["Arsenal", "Sporting CP", "Emeka Osei"],
+  "allowed_numbers": ["64", "5"],
+  "valid_fact_ids": ["fact-transfer-64m", "fact-contract-5yr"],
+  "source_is_speculative": false,
+  "source_evidence": [
+    "Arsenal Football Club is delighted to announce the permanent signing of Nigerian international Emeka Osei from Sporting CP for an agreed fee of €64m on a five-year contract."
+  ],
+  "generated_text": "Arsenal have confirmed the signing of forward Emeka Osei from Sporting CP for a fee of €64m on a 5-year deal [fact-transfer-64m] [fact-contract-5yr]."
+}

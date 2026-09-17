@@ -1,0 +1,13 @@
+{
+  "name": "golden_syndicated_wire",
+  "category": "syndicated_wire",
+  "description": "Wire agency report syndicated across outlets preserving exact numbers and competition format",
+  "expected_entities": ["UEFA", "Champions League"],
+  "allowed_numbers": ["36", "8"],
+  "valid_fact_ids": ["fact-uefa-36teams"],
+  "source_is_speculative": false,
+  "source_evidence": [
+    "GENEVA (Reuters) - European football governing body UEFA has confirmed the Champions League expansion to 36 clubs competing in an 8-match single league phase."
+  ],
+  "generated_text": "UEFA confirmed the Champions League expansion to 36 clubs competing in an 8-match single league phase [fact-uefa-36teams]."
+}

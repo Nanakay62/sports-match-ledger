@@ -1,7 +1,9 @@
 import json
+import xml.sax.saxutils as saxutils
+from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from packages.ai.translation import TranslationService
@@ -145,6 +147,61 @@ def list_events(
         limit=limit,
     )
     return [build_localized_event(em=em, target_lang=lang, db=db) for em in event_models]
+
+
+@router.get("/feed.rss")
+def get_events_rss_feed(
+    limit: int = Query(30, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Returns an RSS 2.0 XML feed of recent verified events with receipts metadata."""
+    event_models = LedgerRepository.list_events(session=db, limit=limit)
+
+    rss_items = []
+    for em in event_models:
+        title = saxutils.escape(em.headline)
+        link = f"https://sportsnewsai.example/event/{em.id}"
+        guid = saxutils.escape(em.id)
+        pub_date = (
+            em.updated_at.strftime("%a, %d %b %Y %H:%M:%S +0000")
+            if em.updated_at
+            else datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+        )
+
+        desc_text = f"{em.summary}\n\nStatus: {em.status.upper()} | Independent Sources: {em.independent_sources}"
+        if em.first_reported_outlet:
+            desc_text += f" | First reported by: {em.first_reported_outlet}"
+        desc = saxutils.escape(desc_text)
+
+        category = saxutils.escape(f"{em.sport}/{em.competition}")
+
+        rss_items.append(f"""    <item>
+      <title>{title}</title>
+      <link>{link}</link>
+      <guid isPermaLink="false">{guid}</guid>
+      <pubDate>{pub_date}</pubDate>
+      <description>{desc}</description>
+      <category>{category}</category>
+    </item>""")
+
+    items_xml = "\n".join(rss_items)
+    now_rfc = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+
+    xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Sports News AI · Accountability Ledger</title>
+    <link>https://sportsnewsai.example</link>
+    <description>Evidence-grounded sports news with the Accountability Ledger and source receipts.</description>
+    <language>en</language>
+    <lastBuildDate>{now_rfc}</lastBuildDate>
+    <generator>Sports News AI Ledger Engine</generator>
+    <atom:link href="https://sportsnewsai.example/api/v1/events/feed.rss" rel="self" type="application/rss+xml" />
+{items_xml}
+  </channel>
+</rss>"""
+
+    return Response(content=xml_content, media_type="application/rss+xml; charset=utf-8")
 
 
 @router.get("/{event_id}", response_model=Event)

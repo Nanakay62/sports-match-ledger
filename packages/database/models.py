@@ -22,6 +22,8 @@ class SourceRegistryStatus(StrEnum):
     TECHNICAL_REVIEW = "technical_review"
     RIGHTS_REVIEW = "rights_review"
     APPROVED = "approved"
+    PAUSED = "paused"
+    BLOCKED = "blocked"
     REJECTED = "rejected"
 
 
@@ -42,7 +44,13 @@ class SourceRegistryModel(Base):
     technical_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     rights_review_passed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     rights_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    robots_status: Mapped[str] = mapped_column(String(32), default="allowed", nullable=False)
+    terms_review_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    publisher_contact: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    per_domain_rate_limit_seconds: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
     polling_interval_minutes: Mapped[int] = mapped_column(Integer, default=15, nullable=False)
+    pause_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    block_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
@@ -59,6 +67,12 @@ class SourceModel(Base):
     sample_size: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     correct_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     wilson_lower_bound: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sample_size_original: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    correct_count_original: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    wilson_lower_bound_original: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sample_size_aggregation: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    correct_count_aggregation: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    wilson_lower_bound_aggregation: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     claims: Mapped[list["ClaimModel"]] = relationship("ClaimModel", back_populates="source")
@@ -79,6 +93,8 @@ class EventModel(Base):
     evidence_rationale_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     first_reported_outlet: Mapped[str | None] = mapped_column(String(128), nullable=True)
     first_reported_lead_minutes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    disputed_by_event_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    dispute_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
@@ -172,6 +188,14 @@ class ClaimModel(Base):
     reporter_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("reporters.id"), nullable=True, index=True)
     reporter: Mapped[str | None] = mapped_column(String(128), nullable=True)
     claim_text: Mapped[str] = mapped_column(Text, nullable=False)
+    subject_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    predicate: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    object_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    qualifiers: Mapped[str | None] = mapped_column(Text, nullable=True)
+    evidence_span: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolvable: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    resolution_class: Mapped[str] = mapped_column(String(32), default="binary", nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(16), default="5.2.0", nullable=False)
     attribution: Mapped[str] = mapped_column(String(32), nullable=False)
     attribution_type: Mapped[str] = mapped_column(String(32), default="first_party", nullable=False)
     language: Mapped[str] = mapped_column(String(16), default="en", nullable=False)
@@ -223,6 +247,10 @@ class ResolutionModel(Base):
     authority_rank: Mapped[int] = mapped_column(Integer, nullable=False)
     authority_source_url: Mapped[str] = mapped_column(String(1024), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entity_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    direction_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    timing_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    fee_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     resolved_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     claim: Mapped["ClaimModel"] = relationship("ClaimModel", back_populates="resolutions")
@@ -240,3 +268,51 @@ class PipelineJobModel(Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     scheduled_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class DeadLetterJobModel(Base):
+    """Records exhausted pipeline jobs routed to the dead-letter queue with diagnostic errors."""
+
+    __tablename__ = "dead_letter_jobs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    job_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    lane: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    payload: Mapped[str] = mapped_column(Text, nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False)
+    error_message: Mapped[str] = mapped_column(Text, nullable=False)
+    last_failed_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    replayed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    replayed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class QuarantinedDocumentModel(Base):
+    """Stores rejected or low-confidence raw documents failing quality thresholds before ledger recording."""
+
+    __tablename__ = "quarantined_documents"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    source_name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    source_url: Mapped[str] = mapped_column(String(1024), nullable=False)
+    raw_payload: Mapped[str] = mapped_column(Text, nullable=False)
+    rejection_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence_score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+
+
+class EditorialEvaluationLogModel(Base):
+    """Stores human editorial decisions as labelled ground-truth evaluation examples."""
+
+    __tablename__ = "editorial_evaluation_logs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    claim_id: Mapped[str] = mapped_column(String(64), ForeignKey("claims.id"), nullable=False, index=True)
+    event_id: Mapped[str] = mapped_column(String(64), ForeignKey("events.id"), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(32), nullable=False)  # "confirm", "dispute", "correct", "dismiss"
+    trigger_category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    editor_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    input_context_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    claim: Mapped["ClaimModel"] = relationship("ClaimModel")
+    event: Mapped["EventModel"] = relationship("EventModel")

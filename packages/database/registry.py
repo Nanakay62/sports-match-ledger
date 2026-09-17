@@ -22,6 +22,10 @@ class SourceRegistryService:
         authority_rank: int = 3,
         feed_format: str = "rss2",
         polling_interval_minutes: int = 15,
+        robots_status: str = "allowed",
+        terms_review_date: datetime | None = None,
+        publisher_contact: str | None = None,
+        per_domain_rate_limit_seconds: float = 1.0,
     ) -> SourceRegistryModel:
         """Nominates a new source into the registry with PROPOSED status."""
         parsed = urlparse(feed_url)
@@ -30,6 +34,9 @@ class SourceRegistryService:
 
         slug = re.sub(r"[^\w\-]", "", source_name.lower().strip().replace(" ", "-"))
         registry_id = f"reg-{slug}"
+
+        if isinstance(terms_review_date, str):
+            terms_review_date = datetime.fromisoformat(terms_review_date)
 
         existing = session.execute(
             select(SourceRegistryModel).where((SourceRegistryModel.id == registry_id) | (SourceRegistryModel.feed_url == feed_url))
@@ -49,6 +56,10 @@ class SourceRegistryService:
             status=SourceRegistryStatus.PROPOSED.value,
             technical_check_passed=False,
             rights_review_passed=False,
+            robots_status=robots_status,
+            terms_review_date=terms_review_date,
+            publisher_contact=publisher_contact,
+            per_domain_rate_limit_seconds=per_domain_rate_limit_seconds,
             polling_interval_minutes=polling_interval_minutes,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
@@ -180,6 +191,68 @@ class SourceRegistryService:
         else:
             item.technical_notes = f"Rejection reason: {reason}"
 
+        session.flush()
+        return item
+
+    @staticmethod
+    def pause_source(
+        session: Session,
+        registry_id: str,
+        pause_reason: str | None = None,
+    ) -> SourceRegistryModel:
+        """Transitions an APPROVED source to PAUSED state, halting background polling."""
+        item = session.execute(select(SourceRegistryModel).where(SourceRegistryModel.id == registry_id)).scalar_one_or_none()
+        if not item:
+            raise ValueError(f"Source registry entry {registry_id} not found")
+
+        if item.status != SourceRegistryStatus.APPROVED.value:
+            raise ValueError(f"Can only pause APPROVED sources (current status: {item.status})")
+
+        item.status = SourceRegistryStatus.PAUSED.value
+        item.pause_reason = pause_reason
+        item.updated_at = datetime.now(timezone.utc)
+        note = f"Paused by editorial desk: {pause_reason or 'Temporary polling pause.'}"
+        item.technical_notes = f"{item.technical_notes} | {note}" if item.technical_notes else note
+        session.flush()
+        return item
+
+    @staticmethod
+    def resume_source(
+        session: Session,
+        registry_id: str,
+    ) -> SourceRegistryModel:
+        """Transitions a PAUSED source back to APPROVED state."""
+        item = session.execute(select(SourceRegistryModel).where(SourceRegistryModel.id == registry_id)).scalar_one_or_none()
+        if not item:
+            raise ValueError(f"Source registry entry {registry_id} not found")
+
+        if item.status != SourceRegistryStatus.PAUSED.value:
+            raise ValueError(f"Can only resume PAUSED sources (current status: {item.status})")
+
+        item.status = SourceRegistryStatus.APPROVED.value
+        item.pause_reason = None
+        item.updated_at = datetime.now(timezone.utc)
+        note = "Resumed by editorial desk."
+        item.technical_notes = f"{item.technical_notes} | {note}" if item.technical_notes else note
+        session.flush()
+        return item
+
+    @staticmethod
+    def block_source(
+        session: Session,
+        registry_id: str,
+        block_reason: str,
+    ) -> SourceRegistryModel:
+        """Transitions a source to BLOCKED state due to policy, terms, or technical violation."""
+        item = session.execute(select(SourceRegistryModel).where(SourceRegistryModel.id == registry_id)).scalar_one_or_none()
+        if not item:
+            raise ValueError(f"Source registry entry {registry_id} not found")
+
+        item.status = SourceRegistryStatus.BLOCKED.value
+        item.block_reason = block_reason
+        item.updated_at = datetime.now(timezone.utc)
+        note = f"BLOCKED: {block_reason}"
+        item.rights_notes = f"{item.rights_notes} | {note}" if item.rights_notes else note
         session.flush()
         return item
 
@@ -381,4 +454,181 @@ def seed_initial_source_registry(session: Session) -> list[SourceRegistryModel]:
         approved_records.append(item)
 
     session.commit()
+
+    # Seed demonstration operational state for editorial admin desk
+    seed_demonstration_admin_data(session)
+
     return approved_records
+
+
+def seed_demonstration_admin_data(session: Session) -> None:
+    """Seeds demonstration items for the editorial control plane if tables are empty.
+
+    Populates:
+    - Sources in non-approved states (PROPOSED, TECHNICAL_REVIEW, RIGHTS_REVIEW, PAUSED, BLOCKED)
+    - Quarantined payloads (failing quality thresholds)
+    - Dead-letter queue entries (exhausted worker jobs with diagnostic traces)
+    - Editorial decision evaluation logs
+    """
+    from .models import ClaimModel, DeadLetterJobModel, EditorialEvaluationLogModel, QuarantinedDocumentModel
+
+    # 1. Demonstration sources in various intake pipeline states
+    # PROPOSED
+    SourceRegistryService.propose_source(
+        session=session,
+        source_name="Kicker Sportmagazin",
+        feed_url="https://rss.kicker.de/news/aktuell",
+        language="de",
+        coverage_category="general",
+        authority_rank=3,
+    )
+
+    SourceRegistryService.propose_source(
+        session=session,
+        source_name="RMC Sport Football",
+        feed_url="https://rmcsport.bfmtv.com/rss/football",
+        language="fr",
+        coverage_category="general",
+        authority_rank=3,
+    )
+
+    # TECHNICAL_REVIEW
+    ser = SourceRegistryService.propose_source(
+        session=session,
+        source_name="Cadena SER Deportes",
+        feed_url="https://cadenaser.com/rss/deportes.xml",
+        language="es",
+        coverage_category="general",
+        authority_rank=3,
+    )
+    if ser.status == SourceRegistryStatus.PROPOSED.value:
+        SourceRegistryService.run_technical_review(
+            session=session,
+            registry_id=ser.id,
+            technical_notes="Validated: HTTP 200 OK, 48KB XML wire received. Rate-limit 1 req/sec verified.",
+        )
+
+    # RIGHTS_REVIEW
+    corriere = SourceRegistryService.propose_source(
+        session=session,
+        source_name="Corriere dello Sport",
+        feed_url="https://www.corrieredellosport.it/rss/calcio.xml",
+        language="it",
+        coverage_category="general",
+        authority_rank=3,
+    )
+    if corriere.status == SourceRegistryStatus.PROPOSED.value:
+        SourceRegistryService.run_technical_review(
+            session=session,
+            registry_id=corriere.id,
+            technical_notes="Validated: HTTP 200 OK, 62KB RSS 2.0 wire.",
+        )
+        SourceRegistryService.run_rights_review(
+            session=session,
+            registry_id=corriere.id,
+            rights_notes="Syndication terms under legal verification. Educational non-commercial quote attribution required.",
+        )
+
+    # PAUSED
+    tribal = SourceRegistryService.propose_source(
+        session=session,
+        source_name="Tribal Football Aggregator",
+        feed_url="https://www.tribalfootball.com/rss.xml",
+        language="en",
+        coverage_category="aggregator",
+        authority_rank=4,
+    )
+    if tribal.status == SourceRegistryStatus.PROPOSED.value:
+        SourceRegistryService.run_technical_review(session=session, registry_id=tribal.id, technical_notes="HTTP 200 OK")
+        SourceRegistryService.run_rights_review(session=session, registry_id=tribal.id, rights_notes="Open syndication")
+        SourceRegistryService.approve_source(session=session, registry_id=tribal.id)
+        SourceRegistryService.pause_source(
+            session=session,
+            registry_id=tribal.id,
+            pause_reason="Temporary hold: elevated duplication rate detected during morning transfer window.",
+        )
+
+    # BLOCKED
+    anon = SourceRegistryService.propose_source(
+        session=session,
+        source_name="Anonymous Transfer Scoop Blog",
+        feed_url="https://anontransferscoop.example.com/feed",
+        language="en",
+        coverage_category="unverified",
+        authority_rank=5,
+    )
+    if anon.status != SourceRegistryStatus.BLOCKED.value:
+        SourceRegistryService.block_source(
+            session=session,
+            registry_id=anon.id,
+            block_reason="Disallowed by terms: systematic scrapers violating robots.txt and publishing unverified rumors.",
+        )
+
+    # 2. Demonstration Quarantined Documents (if empty)
+    quar_count = session.query(QuarantinedDocumentModel).count()
+    if quar_count == 0:
+        session.add_all(
+            [
+                QuarantinedDocumentModel(
+                    id="quar-payload-001",
+                    source_name="FootyInsider Wire",
+                    source_url="https://footyinsider247.example.com/transfers/exclusive-january-deal",
+                    raw_payload='{\n  "title": "Exclusive: Striker agreed personal terms",\n  "body": "Subscribe to read the full story. Registration required...",\n  "status_code": 200,\n  "word_count": 18\n}',
+                    rejection_reason="Truncated article body (18 words); paywall registration splash page detected. Confidence score (0.28) below quality gate threshold (0.50).",
+                    confidence_score=0.28,
+                ),
+                QuarantinedDocumentModel(
+                    id="quar-payload-002",
+                    source_name="Social Media Rumour Bot",
+                    source_url="https://socialwire.example.com/post/99482711",
+                    raw_payload='{\n  "author": "@rumour_central",\n  "text": "HEARING: Top winger could leave next week. Fee around 50m. More to follow.",\n  "likes": 42\n}',
+                    rejection_reason="Insufficient extracted predicate density. Single speculative statement without named club, fee currency, or authoritative quote (0.39 < 0.50).",
+                    confidence_score=0.39,
+                ),
+            ]
+        )
+
+    # 3. Demonstration Dead-Letter Queue Jobs (if empty)
+    dl_count = session.query(DeadLetterJobModel).count()
+    if dl_count == 0:
+        session.add_all(
+            [
+                DeadLetterJobModel(
+                    id="dl-job-001",
+                    job_id="pipe-job-8921",
+                    lane="speed",
+                    payload='{\n  "feed_url": "https://syndicate.sportsnews.internal/wire/v2",\n  "event_type": "breaking_match_alert"\n}',
+                    attempts=3,
+                    error_message="RateLimitError: 429 Too Many Requests received from upstream syndicate feed gateway after 3 exponential backoff cycles.",
+                    replayed=False,
+                ),
+                DeadLetterJobModel(
+                    id="dl-job-002",
+                    job_id="pipe-job-8922",
+                    lane="evidence",
+                    payload='{\n  "event_id": "ev-real-mbappe-001",\n  "stage": "bylined_synthesis",\n  "rung": "L2_SmallHosted"\n}',
+                    attempts=3,
+                    error_message="ConnectTimeout: Upstream inference cluster gateway timed out after 30000ms.",
+                    replayed=False,
+                ),
+            ]
+        )
+
+    # 4. Demonstration Editorial Evaluation Logs (if empty)
+    eval_count = session.query(EditorialEvaluationLogModel).count()
+    if eval_count == 0:
+        first_claim = session.query(ClaimModel).first()
+        if first_claim:
+            session.add(
+                EditorialEvaluationLogModel(
+                    id="eval-log-demo-001",
+                    claim_id=first_claim.id,
+                    event_id=first_claim.event_id,
+                    action="confirm",
+                    trigger_category="official_corroboration",
+                    editor_notes="Verified via club press office statement. Ground-truth label recorded for release gate benchmark.",
+                    input_context_json='{"claim_text": "' + first_claim.claim_text.replace('"', '\\"') + '", "status": "confirmed"}',
+                )
+            )
+
+    session.commit()

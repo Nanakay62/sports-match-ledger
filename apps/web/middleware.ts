@@ -13,6 +13,11 @@ export function middleware(req: NextRequest) {
     (configuredAdminHost ? host.toLowerCase() === configuredAdminHost.toLowerCase() : false) ||
     url.searchParams.get("subdomain") === "admin";
 
+  const isLocalOrDev =
+    host.toLowerCase().includes("localhost") ||
+    host.toLowerCase().includes("127.0.0.1") ||
+    process.env.NODE_ENV !== "production";
+
   if (isAdminSubdomain) {
     // On the admin subdomain:
     // Route root / to /admin
@@ -21,7 +26,7 @@ export function middleware(req: NextRequest) {
       return NextResponse.rewrite(url);
     }
     // Route clean subpaths: /sources -> /admin/sources, etc.
-    const adminSubpaths = ["sources", "review", "entities", "cost"];
+    const adminSubpaths = ["clusters", "sources", "review", "entities", "cost", "quarantine", "dead-letters"];
     const firstSegment = pathname.split("/")[1];
     if (adminSubpaths.includes(firstSegment)) {
       url.pathname = `/admin${pathname}`;
@@ -35,7 +40,12 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // On the public client / reader domain:
+  // In local development or testing, permit direct access to /admin and /admin/*
+  if (isLocalOrDev) {
+    return NextResponse.next();
+  }
+
+  // On the public client / reader domain in production:
   // Strictly forbid access to /admin or /admin/* -> return 404 Not Found
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
     url.pathname = "/_not-found";
