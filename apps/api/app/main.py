@@ -7,7 +7,7 @@ from packages.database.repository import LedgerRepository
 from packages.database.session import engine
 
 from .config import settings
-from .routers import admin, billing, claims, entities, events, ingest, reliability, sources, topics
+from .routers import admin, alerts, billing, claims, entities, events, ingest, reliability, sources, topics
 
 
 @asynccontextmanager
@@ -46,6 +46,7 @@ app.include_router(reliability.router, prefix="/api/v1")
 app.include_router(sources.router, prefix="/api/v1")
 app.include_router(topics.router, prefix="/api/v1")
 app.include_router(billing.router, prefix="/api/v1")
+app.include_router(alerts.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 
 

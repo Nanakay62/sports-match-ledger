@@ -100,6 +100,25 @@ See `docs/adr/0017-stripe-billing-and-persisted-entitlements.md` for what is and
 
 ---
 
+## Watchlist Alerts (Free: daily digest, Pro: real-time)
+
+Adding a story to your watchlist while identified by email subscribes you to status-change
+alerts. Without `SMTP_HOST` configured, alert emails are written to `data/emails/` instead of
+sent — the full subscribe → status-change → notify pipeline works end to end with zero
+external credentials, which is also how it's tested (`tests/unit/test_alerts.py`).
+
+To send real digests once a day:
+```bash
+uv run --with-requirements apps/api/requirements.txt python scripts/send_daily_digests.py
+```
+This is not self-scheduling — run it from cron or an equivalent scheduler in production.
+
+See `docs/adr/0019-realtime-vs-digest-alert-delivery.md` for what is and isn't handled yet
+(notably: `SMTPEmailBackend` has never been exercised against a live mail server, and there's
+no unsubscribe link inside the emails themselves).
+
+---
+
 ## Testing & Quality Gates
 
 The project enforces 6 strict quality gates verified via GitHub Actions (`.github/workflows/ci.yml`):

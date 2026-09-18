@@ -365,3 +365,39 @@ class PaywallEventModel(Base):
     email: Mapped[str | None] = mapped_column(String(320), nullable=True, index=True)
     context: Mapped[str | None] = mapped_column(String(256), nullable=True)  # e.g. event_id or subject slug
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+
+
+class AlertSubscriptionModel(Base):
+    """An email subscribed to alerts for one event (Handbook §18.1's "Alerts" row).
+
+    Deliberately separate from the client-only watchlist (apps/web/lib/watchlist.ts,
+    ADR-0018): a UI watchlist item needs no server record, but an email alert
+    cannot be delivered to a browser's localStorage — it needs a server-side
+    subscription tied to an email the moment that email is known.
+    """
+
+    __tablename__ = "alert_subscriptions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    event_id: Mapped[str] = mapped_column(String(64), ForeignKey("events.id"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class DigestQueueItemModel(Base):
+    """A pending status-change notification for a free-tier subscriber, batched
+    into one daily digest email rather than sent immediately (Handbook §18.1:
+    Free = "Daily digest", Pro = "Real-time"). Pro subscribers never get a row
+    here — NotificationDispatcher sends to them immediately instead.
+    """
+
+    __tablename__ = "digest_queue_items"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    event_id: Mapped[str] = mapped_column(String(64), ForeignKey("events.id"), nullable=False)
+    headline: Mapped[str] = mapped_column(String(512), nullable=False)
+    old_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    new_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
