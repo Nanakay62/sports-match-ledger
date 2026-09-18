@@ -5,7 +5,13 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from packages.database.billing_repository import FREE_WATCHLIST_LIMIT, PRO_WATCHLIST_LIMIT, BillingRepository
+from packages.database.billing_repository import (
+    FREE_WATCHLIST_LIMIT,
+    PRO_WATCHLIST_LIMIT,
+    VALID_ACTIONS,
+    VALID_WALL_IDS,
+    BillingRepository,
+)
 from packages.database.session import get_db
 
 from ..billing.stripe_client import StripeAPIError, StripeClient, StripeConfigError, verify_stripe_signature
@@ -63,6 +69,17 @@ class PortalRequest(BaseModel):
 
 class PortalResponse(BaseModel):
     portal_url: str
+
+
+class PaywallEventRequest(BaseModel):
+    wall_id: str
+    action: str
+    email: str | None = None
+    context: str | None = None
+
+
+class PaywallEventAck(BaseModel):
+    recorded: bool
 
 
 @router.get("/plans", response_model=list[BillingPlan])
@@ -269,3 +286,18 @@ async def process_billing_webhook(
     BillingRepository.mark_webhook_event_processed(db, event_id, event_type)
 
     return WebhookResponse(status="success", event_id=event_id, action=action, message=f"Successfully processed {event_type}")
+
+
+@router.post("/paywall-events", response_model=PaywallEventAck)
+def record_paywall_event(req: PaywallEventRequest, db: Session = Depends(get_db)) -> PaywallEventAck:
+    """Records a paywall impression or click for per-wall conversion measurement
+    (Handbook §18.3/§18.5). wall_id and action are validated against a fixed set so a
+    frontend typo fails loudly here rather than silently corrupting the conversion data.
+    """
+    if req.wall_id not in VALID_WALL_IDS or req.action not in VALID_ACTIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"wall_id must be one of {sorted(VALID_WALL_IDS)}, action must be one of {sorted(VALID_ACTIONS)}",
+        )
+    BillingRepository.record_paywall_event(db, wall_id=req.wall_id, action=req.action, email=req.email, context=req.context)
+    return PaywallEventAck(recorded=True)

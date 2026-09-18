@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Check, Info, X } from "lucide-react";
-import { StatusBadge } from "@/components/status-badge";
+import { Info } from "lucide-react";
 import { TallyMarks } from "@/components/tally-marks";
 import { CategoryRecordRow } from "@/components/category-record";
+import { SubjectClaimHistory } from "@/components/subject-claim-history";
 import {
   loadReliabilityScore,
   loadSubjectClaimsAndEvents,
@@ -12,7 +12,7 @@ import {
   localizeEvent,
   reliabilityByName,
 } from "@/lib/data-loader";
-import { pct, slugify, timeAgo } from "@/lib/format";
+import { pct, slugify } from "@/lib/format";
 import { getDictionary } from "@/lib/i18n";
 import type { Claim, Event } from "@/lib/types";
 
@@ -161,59 +161,7 @@ export default async function ReliabilityPage({
           </span>
         </div>
 
-        {rows.length === 0 ? (
-          <p className="mt-6 text-[13.5px] text-ink-faint">No claims recorded yet for this subject.</p>
-        ) : (
-          <div className="divide-y divide-rule">
-            {rows.map(({ claim, event }) => {
-              const res = score.recentResolutions.find((r) => r.claim === claim.text);
-              const outcome = res?.outcome;
-
-              return (
-                <article key={claim.id} className="py-4 text-[13.5px]">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-[12px] text-ink-faint">
-                    <div className="flex items-center gap-2">
-                      <StatusBadge status={event.status} size="chip" />
-                      <span className="font-mono text-[11px]">Claim № {claim.id}</span>
-                    </div>
-                    <span suppressHydrationWarning className="font-mono text-[11px]">
-                      {timeAgo(claim.timestamp)}
-                    </span>
-                  </div>
-
-                  <p className="mt-2 text-ink-soft">"{claim.text}"</p>
-
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[12px]">
-                    <Link
-                      href={`/event/${event.id}${querySuffix}`}
-                      className="font-medium text-ledger hover:underline"
-                    >
-                      {event.headline} →
-                    </Link>
-                    {outcome && (
-                      <span
-                        className={`inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-wider ${
-                          outcome === "correct"
-                            ? "text-confirmed font-medium"
-                            : outcome === "incorrect"
-                            ? "text-disputed font-medium"
-                            : "text-ink-faint"
-                        }`}
-                      >
-                        {outcome === "correct" ? (
-                          <Check className="size-3" />
-                        ) : outcome === "incorrect" ? (
-                          <X className="size-3" />
-                        ) : null}
-                        Outcome: {outcome}
-                      </span>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
+        <SubjectClaimHistory rows={rows} recentResolutions={score.recentResolutions} subjectSlug={subject} querySuffix={querySuffix} />
       </section>
     </main>
   );

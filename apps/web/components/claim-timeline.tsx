@@ -1,22 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, BellRing, FileDown, History, Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowUpRight } from "lucide-react";
 import { domainOf, formatDate, formatTime, slugify } from "@/lib/format";
 import { reliabilityByName } from "@/lib/mock-data";
 import { ATTRIBUTION_STYLE } from "@/lib/status";
+import { FREE_ARCHIVE_WINDOW_DAYS, useEntitlements } from "@/lib/entitlements";
 import type { Claim } from "@/lib/types";
 import { ReliabilityPill } from "./reliability-pill";
+import { PaywallWall } from "./paywall-wall";
 
-const VISIBLE_FREE = 4;
 const LANG_NAMES: Record<string, string> = {
-  es: "Spanish", it: "Italian", fr: "French", de: "German", pt: "Portuguese", nl: "Dutch",
+  es: "Spanish",
+  it: "Italian",
+  fr: "French",
+  de: "German",
+  pt: "Portuguese",
+  nl: "Dutch",
 };
 
-export function ClaimTimeline({ claims }: { claims: Claim[] }) {
-  const visible = claims.slice(0, VISIBLE_FREE);
-  const locked = claims.slice(VISIBLE_FREE);
+function isWithinFreeArchiveWindow(timestamp: string): boolean {
+  const ageMs = Date.now() - new Date(timestamp).getTime();
+  return ageMs <= FREE_ARCHIVE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+}
+
+export function ClaimTimeline({
+  claims,
+  eventId,
+  querySuffix = "",
+}: {
+  claims: Claim[];
+  eventId: string;
+  querySuffix?: string;
+}) {
+  const { isPro, email, loading } = useEntitlements();
+
+  // Handbook §18.3: the archive-depth wall gates history beyond 30 days, never the
+  // current record. Free users see every claim from the last 30 days in full.
+  const visible = isPro || loading ? claims : claims.filter((c) => isWithinFreeArchiveWindow(c.timestamp));
+  const locked = isPro || loading ? [] : claims.filter((c) => !isWithinFreeArchiveWindow(c.timestamp));
+
   return (
     <div>
       <ol>
@@ -24,7 +47,17 @@ export function ClaimTimeline({ claims }: { claims: Claim[] }) {
           <TimelineRow key={c.id} claim={c} />
         ))}
       </ol>
-      {locked.length > 0 && <LockedNote count={locked.length} />}
+      {locked.length > 0 && (
+        <PaywallWall
+          wallId="archive_depth"
+          email={email}
+          context={eventId}
+          querySuffix={querySuffix}
+          title={`Full audit trail: ${locked.length} more ${locked.length === 1 ? "entry" : "entries"}`}
+          description={`You're seeing claims from the last ${FREE_ARCHIVE_WINDOW_DAYS} days. The complete, timestamped history of this claim (including superseded reports beyond that window) is a Pro feature.`}
+          bullets={["History beyond the recent window", "CSV & JSON export of the claim ledger", "Real-time alerts when this status changes"]}
+        />
+      )}
     </div>
   );
 }
@@ -84,54 +117,5 @@ function TimelineRow({ claim: c }: { claim: Claim }) {
         </a>
       </div>
     </li>
-  );
-}
-
-function LockedNote({ count }: { count: number }) {
-  return (
-    <div className="mt-6 rounded-[4px] border border-dashed border-rule-strong bg-paper-deep/60 p-5">
-      <div className="flex items-center gap-2 font-display text-lg">
-        <Lock className="size-4" aria-hidden /> Full audit trail: {count} more{" "}
-        {count === 1 ? "entry" : "entries"}
-      </div>
-      <p className="mt-1.5 max-w-xl text-[13.5px] leading-relaxed text-ink-soft">
-        You're seeing the most recent entries. The complete, timestamped history of this claim
-        (including superseded reports and the paperwork trail) is a Pro feature.
-      </p>
-      <ul className="mt-3 space-y-1.5 text-[13px] text-ink-soft">
-        <li className="flex items-start gap-2">
-          <History className="mt-0.5 size-3.5 shrink-0 text-ink-faint" aria-hidden />
-          History beyond the recent window
-        </li>
-        <li className="flex items-start gap-2">
-          <FileDown className="mt-0.5 size-3.5 shrink-0 text-ink-faint" aria-hidden />
-          CSV &amp; JSON export of the claim ledger
-        </li>
-        <li className="flex items-start gap-2">
-          <BellRing className="mt-0.5 size-3.5 shrink-0 text-ink-faint" aria-hidden />
-          Real-time alerts when this status changes
-        </li>
-      </ul>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Button asChild size="sm" className="bg-ink text-paper hover:bg-ledger-deep">
-          <Link href="/pro">See what Pro adds</Link>
-        </Button>
-        <Button
-          asChild
-          size="sm"
-          variant="outline"
-          className="border-rule-strong text-ink-soft hover:text-ink"
-          title="Export is a Pro feature"
-        >
-          <Link href="/pro">
-            <FileDown className="size-3.5" aria-hidden /> Export ledger
-            <Lock className="size-3 text-ink-faint" aria-hidden />
-          </Link>
-        </Button>
-      </div>
-      <p className="mt-3 text-[11.5px] text-ink-faint">
-        The current status and every claim above stay free, always.
-      </p>
-    </div>
   );
 }

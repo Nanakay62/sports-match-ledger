@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from packages.ai.budget import CostTracker
 from packages.common.entities import default_entity_graph
+from packages.database.billing_repository import BillingRepository
 from packages.database.models import (
     ClaimModel,
     DeadLetterJobModel,
@@ -278,6 +279,23 @@ def get_cost_telemetry(db: Session = Depends(get_db)):
         rung_breakdown=rung_counts,
         recent_traces=recent_traces,
     )
+
+
+class PaywallWallConversion(BaseModel):
+    wall_id: str
+    shown: int
+    clicked: int
+    conversion_rate: float
+
+
+@router.get("/paywall-conversion", response_model=list[PaywallWallConversion])
+def get_paywall_conversion(db: Session = Depends(get_db)) -> list[PaywallWallConversion]:
+    """Per-wall shown/clicked/conversion-rate breakdown (Handbook §18.3: "measure the
+    conversion rate of each wall separately"). One row per wall_id that has ever fired
+    a paywall event; walls with zero impressions so far simply don't appear yet.
+    """
+    summary = BillingRepository.get_paywall_conversion_summary(db)
+    return [PaywallWallConversion(**row) for row in summary]
 
 
 @router.post("/sources/{registry_id}/advance")

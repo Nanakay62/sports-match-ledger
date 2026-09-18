@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getStoredEmail, setStoredEmail } from "@/lib/identity";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -8,6 +9,11 @@ export function ManageSubscription() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const stored = getStoredEmail();
+    if (stored) setEmail(stored);
+  }, []);
 
   async function openPortal(e: React.FormEvent) {
     e.preventDefault();
@@ -28,6 +34,7 @@ export function ManageSubscription() {
         throw new Error(resp.status === 404 ? "No subscription found for that email." : body.detail || "Could not open billing portal.");
       }
       const data = await resp.json();
+      setStoredEmail(email);
       window.location.href = data.portal_url;
     } catch (err) {
       setStatus("error");

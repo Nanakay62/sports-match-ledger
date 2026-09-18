@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowUpRight, FileDown, Lock, Radio } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowUpRight, Radio } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { EntityChip } from "@/components/entity-chip";
 import { WhyStatusPanel } from "@/components/why-status-panel";
 import { ClaimTimeline } from "@/components/claim-timeline";
 import { ReliabilityScoreCard } from "@/components/reliability-score-card";
 import { WatchButton } from "@/components/watch-button";
+import { ExportButton } from "@/components/export-button";
 import { buildStatusReasoning } from "@/lib/evidence";
 import { loadClaims, loadEvent, loadRelatedEvents, reliabilityByName } from "@/lib/data-loader";
 import { entryNo, formatDate, leadTime, slugify, timeAgo } from "@/lib/format";
@@ -116,19 +116,8 @@ export default async function EventPage({
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <WatchButton />
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="border-rule-strong text-ink-soft hover:text-ink"
-            title="Export is a Pro feature"
-          >
-            <Link href={`/pro${querySuffix}`}>
-              <FileDown className="size-3.5" aria-hidden /> Export CSV
-              <Lock className="size-3 text-ink-faint" aria-hidden />
-            </Link>
-          </Button>
+          <WatchButton eventId={event.id} querySuffix={querySuffix} />
+          <ExportButton eventId={event.id} label="Export CSV" querySuffix={querySuffix} />
 
           <Link
             href={`/rumour/${event.id}${querySuffix}`}
@@ -198,7 +187,7 @@ export default async function EventPage({
             </span>
           </div>
           <div className="mt-1">
-            <ClaimTimeline claims={claims} />
+            <ClaimTimeline claims={claims} eventId={event.id} querySuffix={querySuffix} />
           </div>
         </section>
 
