@@ -1,5 +1,17 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Calculator, ShieldCheck, Scale, History, Split } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Calculator,
+  ShieldCheck,
+  Scale,
+  History,
+  Split,
+  Flag,
+  Route,
+  Zap,
+  XCircle,
+} from "lucide-react";
 
 export const metadata = {
   title: "Scoring Methodology & Formula Specification | Sports News AI",
@@ -52,6 +64,100 @@ export default function MethodologyPage() {
               </p>
             </div>
           </div>
+        </section>
+
+        {/* Five Differentiators */}
+        <section className="space-y-4">
+          <div className="border-b border-rule pb-2">
+            <h2 className="font-serif text-xl font-bold">What Makes This Different</h2>
+            <p className="mt-1 text-sm text-ink-muted">
+              Five deliberate design choices, not marketing claims — each one is a page or a feature you can go check right now.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="rounded border border-rule p-4">
+              <div className="flex items-center gap-2">
+                <Calculator className="h-4 w-4 text-accent shrink-0" />
+                <span className="font-serif text-sm font-bold">Reliability, measured, not asserted</span>
+              </div>
+              <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
+                Every score on the{" "}
+                <Link href="/reliability" className="underline decoration-rule-strong underline-offset-2 hover:text-ink">
+                  reliability desk
+                </Link>{" "}
+                carries its sample size next to it. Below 10 resolved claims, we show &ldquo;insufficient record&rdquo;
+                instead of a number — see §2 below.
+              </p>
+            </div>
+            <div className="rounded border border-rule p-4">
+              <div className="flex items-center gap-2">
+                <Flag className="h-4 w-4 text-accent shrink-0" />
+                <span className="font-serif text-sm font-bold">First-report attribution</span>
+              </div>
+              <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
+                We record who broke a story, not who republished it loudest. Event cards credit the outlet that
+                reported first and how far ahead of the pack they were — not just whoever&apos;s headline you saw.
+              </p>
+            </div>
+            <div className="rounded border border-rule p-4">
+              <div className="flex items-center gap-2">
+                <Route className="h-4 w-4 text-accent shrink-0" />
+                <span className="font-serif text-sm font-bold">Rumour lifecycle view</span>
+              </div>
+              <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
+                Every transfer saga is one page: every claim, who made it, what corroborated or contradicted it,
+                and how it ended. Competitors show you today&apos;s article; we show you the whole arc.
+              </p>
+            </div>
+            <div className="rounded border border-rule p-4">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-accent shrink-0" />
+                <span className="font-serif text-sm font-bold">Two-speed delivery</span>
+              </div>
+              <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
+                A speed lane pushes a bare factual alert within seconds of detection — no generated prose. An
+                evidence lane follows with a grounded, sourced summary once it&apos;s actually verified.
+              </p>
+            </div>
+          </div>
+          <div className="rounded-lg border border-navy-950/20 bg-navy-950 p-5 text-paper">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              <span className="font-serif text-sm font-bold">The no-invention guarantee</span>
+            </div>
+            <p className="mt-1.5 text-xs leading-relaxed text-paper-deep/80">
+              Every published sentence traces back to stored evidence, and the interface will show you that evidence.
+              In a market saturated with generated slop, verifiable restraint is the fifth differentiator — and the
+              one the other four exist to protect.
+            </p>
+          </div>
+        </section>
+
+        {/* What this is / isn't */}
+        <section className="space-y-3 rounded-lg border border-dashed border-rule-strong bg-paper p-6">
+          <h2 className="font-serif text-lg font-bold">What This Is — and Isn&apos;t</h2>
+          <p className="text-sm leading-relaxed text-ink-muted">
+            The sports news app that keeps the receipts: we collect reporting from approved sources, group it into
+            events, extract the specific claims each outlet makes, and track whether those claims turn out to be true.
+          </p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Explicitly not:</p>
+          <ul className="grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm text-ink-muted sm:grid-cols-2">
+            <li className="flex items-start gap-2">
+              <XCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-disputed" /> A place to read full articles
+            </li>
+            <li className="flex items-start gap-2">
+              <XCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-disputed" /> An opinion or comment platform
+            </li>
+            <li className="flex items-start gap-2">
+              <XCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-disputed" /> A live-score product
+            </li>
+            <li className="flex items-start gap-2">
+              <XCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-disputed" /> A betting tipster
+            </li>
+            <li className="flex items-start gap-2">
+              <XCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-disputed" /> A personality-driven brand
+            </li>
+          </ul>
         </section>
 
         {/* 1. Wilson Lower Bound */}

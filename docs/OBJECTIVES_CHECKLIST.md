@@ -13,14 +13,14 @@
 ### The product thesis
 - [x] **The one-sentence positioning is written down and used consistently: “the sports news app that keeps the receipts”**  
   *Verified in:* [`README.md`](file:///c:/Users/nanak/Desktop/SportsJournalist/README.md#L3), [`AGENTS.md`](file:///c:/Users/nanak/Desktop/SportsJournalist/AGENTS.md#L9), [`docs/editorial-policy/what-not-to-monetise.md`](file:///c:/Users/nanak/Desktop/SportsJournalist/docs/editorial-policy/what-not-to-monetise.md#L4), [`apps/web/lib/i18n.ts`](file:///c:/Users/nanak/Desktop/SportsJournalist/apps/web/lib/i18n.ts#L14).
-- [ ] **The five differentiators are named explicitly in the product (not just implied):** reliability with sample size, first-report attribution, rumour lifecycle view, two-speed delivery, no-invention guarantee  
-  *Status:* Underlying features exist, but they are not yet bundled and explicitly named as the 5 differentiators in a dedicated product view.
-- [ ] **Explicit “not this” list is documented:** not a full-article reader, not an opinion platform, not a live-score product, not a betting tipster, not a personality brand  
-  *Status:* Points 1, 4, 5 are codified in [`docs/editorial-policy/what-not-to-monetise.md`](file:///c:/Users/nanak/Desktop/SportsJournalist/docs/editorial-policy/what-not-to-monetise.md); the exact 5-item canonical list is not yet documented verbatim.
+- [x] **The five differentiators are named explicitly in the product (not just implied):** reliability with sample size, first-report attribution, rumour lifecycle view, two-speed delivery, no-invention guarantee
+  *Verified in:* [`apps/web/app/methodology/page.tsx`](apps/web/app/methodology/page.tsx) — a "What Makes This Different" section names and links all five, each pointing at the real feature (reliability desk, event-card attribution, rumour lifecycle page, speed/evidence lane split, no-invention guarantee). Verified live: started the dev server, confirmed all five headings and the guarantee text actually render in the page HTML.
+- [x] **Explicit "not this" list is documented:** not a full-article reader, not an opinion platform, not a live-score product, not a betting tipster, not a personality brand
+  *Verified in:* [`apps/web/app/methodology/page.tsx`](apps/web/app/methodology/page.tsx) — a "What This Is — and Isn't" section states the one-paragraph positioning plus the exact five-item list verbatim, alongside the pre-existing [`docs/editorial-policy/what-not-to-monetise.md`](docs/editorial-policy/what-not-to-monetise.md) which covers a different, overlapping set of exclusions (monetisation practices, not product scope).
 
 ### Revenue architecture
-- [ ] **All seven revenue lines are identified and sequenced by earliest viable month:** consumer subscription (M5), data/claims API (M8), newsletter sponsorship (M5), display advertising (M4), embeddable widgets (M7), affiliate/referral (M6), annual reports/licensing (M12)  
-  *Status:* Revenue sequencing schedule not yet committed to repository documentation.
+- [x] **All seven revenue lines are identified and sequenced by earliest viable month:** consumer subscription (M5), data/claims API (M8), newsletter sponsorship (M5), display advertising (M4), embeddable widgets (M7), affiliate/referral (M6), annual reports/licensing (M12)
+  *Verified in:* [`docs/revenue-roadmap.md`](docs/revenue-roadmap.md) — the handbook's table reproduced with a "Status in this repo" column per line, checked against the actual codebase rather than assumed: only line 1 (subscription) is genuinely live; line 2 (API) has the tiering infrastructure but no self-serve billing; line 5 (widgets) has the free embeds but no paid tier; lines 3, 4, 6, 7 are not built.
 - [x] **Free vs. Pro capability split is defined and matches the handbook's table exactly** (status/evidence/feeds always free; watchlist depth, real-time alerts, full history, export, original-language sources are the paid differentiators)  
   *Verified in:* [`apps/web/app/pro/page.tsx`](file:///c:/Users/nanak/Desktop/SportsJournalist/apps/web/app/pro/page.tsx#L11-L24) and [`docs/editorial-policy/what-not-to-monetise.md`](file:///c:/Users/nanak/Desktop/SportsJournalist/docs/editorial-policy/what-not-to-monetise.md#L26-L28).
 - [x] **Annual pricing is deliberately set below 8 months of monthly billing**  
@@ -97,7 +97,8 @@
   *Verified in:* API has `/healthz` in [`apps/api/app/main.py`](file:///c:/Users/nanak/Desktop/SportsJournalist/apps/api/app/main.py#L50-L52); web app has `/healthz` in [`apps/web/app/healthz/route.ts`](file:///c:/Users/nanak/Desktop/SportsJournalist/apps/web/app/healthz/route.ts).
 - [x] **ADRs 0001–0006 written**  
   *Verified in:* [`docs/adr/`](file:///c:/Users/nanak/Desktop/SportsJournalist/docs/adr/) (0001 through 0006).
-- [ ] **Proof the gate is real: a deliberately broken test has been watched failing and then passing in CI**  
+- [x] **Proof the gate is real: a deliberately broken test has been watched failing and then passing in CI**
+  *Verified:* `tests/unit/test_alerts.py::test_subscribe_is_idempotent` deliberately broken (PR #7, commit `df676b3`) — Gate 5 genuinely failed: https://github.com/Nanakay62/sports-match-ledger/actions/runs/35344783330/job/105598706000. Reverted (commit `fe71825`) — Gate 5 genuinely passed: https://github.com/Nanakay62/sports-match-ledger/actions/runs/35344889173/job/105599039254. Net diff vs `main` was zero, so the PR was closed without merging rather than merging a no-op.  
   *Status:* CI drill procedure.
 
 ### Phase 2 — First vertical slice (zero model calls)
