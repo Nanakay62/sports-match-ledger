@@ -81,7 +81,9 @@ def test_subscribe_is_idempotent():
         rec1 = NotificationsRepository.subscribe(session, "reader@example.com", "evt-alert-1")
         rec2 = NotificationsRepository.subscribe(session, "READER@example.com", "evt-alert-1")
         assert rec1.id == rec2.id
-        assert NotificationsRepository.get_subscriber_emails(session, "evt-alert-1") == ["reader@example.com"]
+        # DELIBERATE BREAK for the Phase 1 CI-gate drill (docs/OBJECTIVES_CHECKLIST.md) — proves
+        # Gate 5 actually fails a wrong assertion rather than passing regardless. Reverted next commit.
+        assert NotificationsRepository.get_subscriber_emails(session, "evt-alert-1") == ["someone-else@example.com"]
 
 
 def test_unsubscribe_removes_subscription():
