@@ -1,0 +1,802 @@
+[
+  {
+    "id": "fx-001",
+    "language": "en",
+    "headline": "Emeka Osei signs for Arsenal for an agreed fee of €64m.",
+    "body": "Emeka Osei signs for Arsenal for an agreed fee of €64m.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-002",
+    "language": "en",
+    "headline": "Real Madrid confirm that Kylian Mbappé has officially joined the club in a deal worth €80m.",
+    "body": "Real Madrid confirm that Kylian Mbappé has officially joined the club in a deal worth €80m.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-003",
+    "language": "en",
+    "headline": "Jonas Lindqvist has signed with Bayern München on a long-term contract.",
+    "body": "Jonas Lindqvist has signed with Bayern München on a long-term contract.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-004",
+    "language": "en",
+    "headline": "Rafael Duarte completed transfer to Chelsea for a reported €45m on Friday.",
+    "body": "Rafael Duarte completed transfer to Chelsea for a reported €45m on Friday.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-005",
+    "language": "en",
+    "headline": "Napoli have unveiled by Kaito Mori as their newest arrival.",
+    "body": "Napoli have unveiled by Kaito Mori as their newest arrival.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-006",
+    "language": "es",
+    "headline": "Viktor Barski ha fichado por Barcelona for €55m.",
+    "body": "Viktor Barski ha fichado por Barcelona for €55m.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-007",
+    "language": "es",
+    "headline": "Thiago Ferraz firma por Manchester City hasta 2029.",
+    "body": "Thiago Ferraz firma por Manchester City hasta 2029.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-008",
+    "language": "it",
+    "headline": "Luca Brandt ha firmato con Brighton & Hove Albion for €12m.",
+    "body": "Luca Brandt ha firmato con Brighton & Hove Albion for €12m.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-009",
+    "language": "it",
+    "headline": "Ufficiale: Emeka Osei è un nuovo giocatore del Arsenal.",
+    "body": "Ufficiale: Emeka Osei è un nuovo giocatore del Arsenal.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-010",
+    "language": "de",
+    "headline": "Kylian Mbappé wechselt zu Real Madrid in a deal worth €80m.",
+    "body": "Kylian Mbappé wechselt zu Real Madrid in a deal worth €80m.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-011",
+    "language": "de",
+    "headline": "Jonas Lindqvist unterschreibt bei Bayern München bis 2029.",
+    "body": "Jonas Lindqvist unterschreibt bei Bayern München bis 2029.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-012",
+    "language": "fr",
+    "headline": "Rafael Duarte s'engage avec Chelsea for a reported €45m.",
+    "body": "Rafael Duarte s'engage avec Chelsea for a reported €45m.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-013",
+    "language": "fr",
+    "headline": "Kaito Mori rejoint Napoli pour les prochaines saisons.",
+    "body": "Kaito Mori rejoint Napoli pour les prochaines saisons.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-014",
+    "language": "en",
+    "headline": "Viktor Barski extends contract with Barcelona until 2030.",
+    "body": "Viktor Barski extends contract with Barcelona until 2030.",
+    "expected_predicate": "contract_extension",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-015",
+    "language": "en",
+    "headline": "Thiago Ferraz signs new deal at Manchester City through 2031.",
+    "body": "Thiago Ferraz signs new deal at Manchester City through 2031.",
+    "expected_predicate": "contract_extension",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-016",
+    "language": "en",
+    "headline": "Brighton & Hove Albion announce Luca Brandt signs extension on improved terms.",
+    "body": "Brighton & Hove Albion announce Luca Brandt signs extension on improved terms.",
+    "expected_predicate": "contract_extension",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-017",
+    "language": "es",
+    "headline": "Emeka Osei renueva contrato con Arsenal hasta 2030.",
+    "body": "Emeka Osei renueva contrato con Arsenal hasta 2030.",
+    "expected_predicate": "contract_extension",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-018",
+    "language": "es",
+    "headline": "Kylian Mbappé renueva con Real Madrid por dos temporadas más.",
+    "body": "Kylian Mbappé renueva con Real Madrid por dos temporadas más.",
+    "expected_predicate": "contract_extension",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-019",
+    "language": "it",
+    "headline": "Jonas Lindqvist estende contratto con Bayern München fino al 2030.",
+    "body": "Jonas Lindqvist estende contratto con Bayern München fino al 2030.",
+    "expected_predicate": "contract_extension",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-020",
+    "language": "it",
+    "headline": "Rafael Duarte rinnova con Chelsea fino al 2031.",
+    "body": "Rafael Duarte rinnova con Chelsea fino al 2031.",
+    "expected_predicate": "contract_extension",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-021",
+    "language": "de",
+    "headline": "Kaito Mori verlängert vertrag bei Napoli bis 2030.",
+    "body": "Kaito Mori verlängert vertrag bei Napoli bis 2030.",
+    "expected_predicate": "contract_extension",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-022",
+    "language": "fr",
+    "headline": "Viktor Barski prolonge son contrat avec Barcelona jusqu'en 2030.",
+    "body": "Viktor Barski prolonge son contrat avec Barcelona jusqu'en 2030.",
+    "expected_predicate": "contract_extension",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-023",
+    "language": "en",
+    "headline": "Thiago Ferraz and Manchester City agree personal terms for €70m.",
+    "body": "Thiago Ferraz and Manchester City agree personal terms for €70m.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-024",
+    "language": "en",
+    "headline": "Luca Brandt has agreed personal terms with Brighton & Hove Albion.",
+    "body": "Luca Brandt has agreed personal terms with Brighton & Hove Albion.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-025",
+    "language": "en",
+    "headline": "Arsenal reaches agreement with Emeka Osei's club for an agreed fee of €64m.",
+    "body": "Arsenal reaches agreement with Emeka Osei's club for an agreed fee of €64m.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-026",
+    "language": "en",
+    "headline": "A verbal agreement is in place between Kylian Mbappé and Real Madrid.",
+    "body": "A verbal agreement is in place between Kylian Mbappé and Real Madrid.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-027",
+    "language": "en",
+    "headline": "Contract agreed between Jonas Lindqvist and Bayern München for €35m.",
+    "body": "Contract agreed between Jonas Lindqvist and Bayern München for €35m.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-028",
+    "language": "es",
+    "headline": "Rafael Duarte acuerda términos personales con Chelsea.",
+    "body": "Rafael Duarte acuerda términos personales con Chelsea.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-029",
+    "language": "es",
+    "headline": "Acuerdo alcanzado entre Napoli y Kaito Mori for €20m.",
+    "body": "Acuerdo alcanzado entre Napoli y Kaito Mori for €20m.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-030",
+    "language": "it",
+    "headline": "Viktor Barski raggiunge l'accordo con Barcelona for €55m.",
+    "body": "Viktor Barski raggiunge l'accordo con Barcelona for €55m.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-031",
+    "language": "it",
+    "headline": "Accordo verbale tra Thiago Ferraz e Manchester City sui termini personali.",
+    "body": "Accordo verbale tra Thiago Ferraz e Manchester City sui termini personali.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-032",
+    "language": "de",
+    "headline": "Luca Brandt einigt sich mit Brighton & Hove Albion for €12m.",
+    "body": "Luca Brandt einigt sich mit Brighton & Hove Albion for €12m.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-033",
+    "language": "de",
+    "headline": "Mündliche Einigung zwischen Emeka Osei und Arsenal.",
+    "body": "Mündliche Einigung zwischen Emeka Osei und Arsenal.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-034",
+    "language": "fr",
+    "headline": "Kylian Mbappé trouve un accord avec Real Madrid in a deal worth €80m.",
+    "body": "Kylian Mbappé trouve un accord avec Real Madrid in a deal worth €80m.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-035",
+    "language": "fr",
+    "headline": "Accord verbal conclu entre Jonas Lindqvist et Bayern München.",
+    "body": "Accord verbal conclu entre Jonas Lindqvist et Bayern München.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-036",
+    "language": "en",
+    "headline": "Rafael Duarte has a medical scheduled with Chelsea tomorrow.",
+    "body": "Rafael Duarte has a medical scheduled with Chelsea tomorrow.",
+    "expected_predicate": "medical_scheduled",
+    "expected_certainty": "expected"
+  },
+  {
+    "id": "fx-037",
+    "language": "en",
+    "headline": "Kaito Mori is undergoing medical at Napoli training ground.",
+    "body": "Kaito Mori is undergoing medical at Napoli training ground.",
+    "expected_predicate": "medical_scheduled",
+    "expected_certainty": "expected"
+  },
+  {
+    "id": "fx-038",
+    "language": "en",
+    "headline": "Viktor Barski passed medical ahead of Barcelona move.",
+    "body": "Viktor Barski passed medical ahead of Barcelona move.",
+    "expected_predicate": "medical_scheduled",
+    "expected_certainty": "expected"
+  },
+  {
+    "id": "fx-039",
+    "language": "es",
+    "headline": "Thiago Ferraz pasa reconocimiento médico con Manchester City.",
+    "body": "Thiago Ferraz pasa reconocimiento médico con Manchester City.",
+    "expected_predicate": "medical_scheduled",
+    "expected_certainty": "expected"
+  },
+  {
+    "id": "fx-040",
+    "language": "it",
+    "headline": "Luca Brandt sostiene le visite mediche con il Brighton & Hove Albion.",
+    "body": "Luca Brandt sostiene le visite mediche con il Brighton & Hove Albion.",
+    "expected_predicate": "medical_scheduled",
+    "expected_certainty": "expected"
+  },
+  {
+    "id": "fx-041",
+    "language": "de",
+    "headline": "Emeka Osei absolviert Medizincheck bei Arsenal.",
+    "body": "Emeka Osei absolviert Medizincheck bei Arsenal.",
+    "expected_predicate": "medical_scheduled",
+    "expected_certainty": "expected"
+  },
+  {
+    "id": "fx-042",
+    "language": "fr",
+    "headline": "Kylian Mbappé passe une visite médicale avec Real Madrid.",
+    "body": "Kylian Mbappé passe une visite médicale avec Real Madrid.",
+    "expected_predicate": "medical_scheduled",
+    "expected_certainty": "expected"
+  },
+  {
+    "id": "fx-043",
+    "language": "en",
+    "headline": "Bayern München submits bid for €35m for Jonas Lindqvist.",
+    "body": "Bayern München submits bid for €35m for Jonas Lindqvist.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-044",
+    "language": "en",
+    "headline": "Chelsea makes offer for a reported €45m for Rafael Duarte.",
+    "body": "Chelsea makes offer for a reported €45m for Rafael Duarte.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-045",
+    "language": "en",
+    "headline": "Napoli makes formal bid for Kaito Mori.",
+    "body": "Napoli makes formal bid for Kaito Mori.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-046",
+    "language": "en",
+    "headline": "Barcelona bids for €55m to sign Viktor Barski.",
+    "body": "Barcelona bids for €55m to sign Viktor Barski.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-047",
+    "language": "en",
+    "headline": "Manchester City submits proposal for Thiago Ferraz's signature.",
+    "body": "Manchester City submits proposal for Thiago Ferraz's signature.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-048",
+    "language": "es",
+    "headline": "Brighton & Hove Albion presenta oferta for €12m por Luca Brandt.",
+    "body": "Brighton & Hove Albion presenta oferta for €12m por Luca Brandt.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-049",
+    "language": "es",
+    "headline": "Arsenal hace oferta formal por Emeka Osei.",
+    "body": "Arsenal hace oferta formal por Emeka Osei.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-050",
+    "language": "it",
+    "headline": "Real Madrid presenta offerta in a deal worth €80m per Kylian Mbappé.",
+    "body": "Real Madrid presenta offerta in a deal worth €80m per Kylian Mbappé.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-051",
+    "language": "it",
+    "headline": "Bayern München ha offerto for €35m per Jonas Lindqvist.",
+    "body": "Bayern München ha offerto for €35m per Jonas Lindqvist.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-052",
+    "language": "de",
+    "headline": "Chelsea gibt Angebot ab für Rafael Duarte.",
+    "body": "Chelsea gibt Angebot ab für Rafael Duarte.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-053",
+    "language": "de",
+    "headline": "Napoli bietet for €20m für Kaito Mori.",
+    "body": "Napoli bietet for €20m für Kaito Mori.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-054",
+    "language": "fr",
+    "headline": "Barcelona fait une offre for €55m pour Viktor Barski.",
+    "body": "Barcelona fait une offre for €55m pour Viktor Barski.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-055",
+    "language": "en",
+    "headline": "Manchester City inquires about Thiago Ferraz ahead of the window.",
+    "body": "Manchester City inquires about Thiago Ferraz ahead of the window.",
+    "expected_predicate": "inquiry_made",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-056",
+    "language": "en",
+    "headline": "Brighton & Hove Albion shows interest in Luca Brandt.",
+    "body": "Brighton & Hove Albion shows interest in Luca Brandt.",
+    "expected_predicate": "inquiry_made",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-057",
+    "language": "en",
+    "headline": "Arsenal monitors Emeka Osei's situation closely.",
+    "body": "Arsenal monitors Emeka Osei's situation closely.",
+    "expected_predicate": "inquiry_made",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-058",
+    "language": "en",
+    "headline": "Real Madrid approaches Kylian Mbappé's representatives.",
+    "body": "Real Madrid approaches Kylian Mbappé's representatives.",
+    "expected_predicate": "inquiry_made",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-059",
+    "language": "es",
+    "headline": "Bayern München se interesa por Jonas Lindqvist.",
+    "body": "Bayern München se interesa por Jonas Lindqvist.",
+    "expected_predicate": "inquiry_made",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-060",
+    "language": "es",
+    "headline": "Rafael Duarte está interesado en Chelsea.",
+    "body": "Rafael Duarte está interesado en Chelsea.",
+    "expected_predicate": "inquiry_made",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-061",
+    "language": "it",
+    "headline": "Napoli mostra interesse per Kaito Mori.",
+    "body": "Napoli mostra interesse per Kaito Mori.",
+    "expected_predicate": "inquiry_made",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-062",
+    "language": "it",
+    "headline": "Viktor Barski è interessato al Barcelona.",
+    "body": "Viktor Barski è interessato al Barcelona.",
+    "expected_predicate": "inquiry_made",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-063",
+    "language": "de",
+    "headline": "Manchester City bekundet Interesse an Thiago Ferraz.",
+    "body": "Manchester City bekundet Interesse an Thiago Ferraz.",
+    "expected_predicate": "inquiry_made",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-064",
+    "language": "fr",
+    "headline": "Luca Brandt s'intéresse à Brighton & Hove Albion.",
+    "body": "Luca Brandt s'intéresse à Brighton & Hove Albion.",
+    "expected_predicate": "inquiry_made",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-065",
+    "language": "en",
+    "headline": "Arsenal denies interest in Emeka Osei.",
+    "body": "Arsenal denies interest in Emeka Osei.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-066",
+    "language": "en",
+    "headline": "Real Madrid rejects move for Kylian Mbappé.",
+    "body": "Real Madrid rejects move for Kylian Mbappé.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-067",
+    "language": "en",
+    "headline": "Bayern München rules out move for Jonas Lindqvist.",
+    "body": "Bayern München rules out move for Jonas Lindqvist.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-068",
+    "language": "en",
+    "headline": "Rafael Duarte will not leave Chelsea this window.",
+    "body": "Rafael Duarte will not leave Chelsea this window.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-069",
+    "language": "en",
+    "headline": "Napoli dismisses rumours linking Kaito Mori away.",
+    "body": "Napoli dismisses rumours linking Kaito Mori away.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-070",
+    "language": "es",
+    "headline": "Barcelona desmiente interés en Viktor Barski.",
+    "body": "Barcelona desmiente interés en Viktor Barski.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-071",
+    "language": "es",
+    "headline": "Manchester City descarta salida de Thiago Ferraz.",
+    "body": "Manchester City descarta salida de Thiago Ferraz.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-072",
+    "language": "es",
+    "headline": "Luca Brandt no saldrá del Brighton & Hove Albion.",
+    "body": "Luca Brandt no saldrá del Brighton & Hove Albion.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-073",
+    "language": "it",
+    "headline": "Arsenal smentisce l'interesse per Emeka Osei.",
+    "body": "Arsenal smentisce l'interesse per Emeka Osei.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-074",
+    "language": "it",
+    "headline": "Kylian Mbappé non lascerà il Real Madrid.",
+    "body": "Kylian Mbappé non lascerà il Real Madrid.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-075",
+    "language": "de",
+    "headline": "Bayern München dementiert Interesse an Jonas Lindqvist.",
+    "body": "Bayern München dementiert Interesse an Jonas Lindqvist.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-076",
+    "language": "de",
+    "headline": "Chelsea schließt einen Wechsel von Rafael Duarte aus.",
+    "body": "Chelsea schließt einen Wechsel von Rafael Duarte aus.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-077",
+    "language": "fr",
+    "headline": "Napoli dément tout intérêt pour Kaito Mori.",
+    "body": "Napoli dément tout intérêt pour Kaito Mori.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-078",
+    "language": "fr",
+    "headline": "Barcelona exclut un départ de Viktor Barski.",
+    "body": "Barcelona exclut un départ de Viktor Barski.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-079",
+    "language": "en",
+    "headline": "Thiago Ferraz continues to be linked with a move to Manchester City.",
+    "body": "Thiago Ferraz continues to be linked with a move to Manchester City.",
+    "expected_predicate": "transfer_linked",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-080",
+    "language": "en",
+    "headline": "Speculation grows over Luca Brandt's future amid Brighton & Hove Albion links.",
+    "body": "Speculation grows over Luca Brandt's future amid Brighton & Hove Albion links.",
+    "expected_predicate": "transfer_linked",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-081",
+    "language": "en",
+    "headline": "Talk of a Emeka Osei move to Arsenal refuses to go away.",
+    "body": "Talk of a Emeka Osei move to Arsenal refuses to go away.",
+    "expected_predicate": "transfer_linked",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-082",
+    "language": "en",
+    "headline": "Sources suggest Kylian Mbappé could be a target for Real Madrid next summer.",
+    "body": "Sources suggest Kylian Mbappé could be a target for Real Madrid next summer.",
+    "expected_predicate": "transfer_linked",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-083",
+    "language": "en",
+    "headline": "Journalists speculate over a possible Jonas Lindqvist switch to Bayern München.",
+    "body": "Journalists speculate over a possible Jonas Lindqvist switch to Bayern München.",
+    "expected_predicate": "transfer_linked",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-084",
+    "language": "es",
+    "headline": "Se especula con un posible fichaje de Rafael Duarte por el Chelsea.",
+    "body": "Se especula con un posible fichaje de Rafael Duarte por el Chelsea.",
+    "expected_predicate": "transfer_linked",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-085",
+    "language": "it",
+    "headline": "Cresce la speculazione su un possibile trasferimento di Kaito Mori al Napoli.",
+    "body": "Cresce la speculazione su un possibile trasferimento di Kaito Mori al Napoli.",
+    "expected_predicate": "transfer_linked",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-086",
+    "language": "en",
+    "headline": "Barcelona confirmed as new player Viktor Barski for €55m.",
+    "body": "Barcelona confirmed as new player Viktor Barski for €55m.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-087",
+    "language": "es",
+    "headline": "Thiago Ferraz es nuevo jugador de Manchester City for €70m.",
+    "body": "Thiago Ferraz es nuevo jugador de Manchester City for €70m.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-088",
+    "language": "it",
+    "headline": "Luca Brandt ha firmato con Brighton & Hove Albion fino al 2029.",
+    "body": "Luca Brandt ha firmato con Brighton & Hove Albion fino al 2029.",
+    "expected_predicate": "official_signing",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-089",
+    "language": "en",
+    "headline": "Emeka Osei agrees terms with Arsenal ahead of a medical.",
+    "body": "Emeka Osei agrees terms with Arsenal ahead of a medical.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-090",
+    "language": "de",
+    "headline": "Kylian Mbappé einigt sich mit Real Madrid auf einen Fuenfjahresvertrag.",
+    "body": "Kylian Mbappé einigt sich mit Real Madrid auf einen Fuenfjahresvertrag.",
+    "expected_predicate": "agrees_terms",
+    "expected_certainty": "agreed"
+  },
+  {
+    "id": "fx-091",
+    "language": "en",
+    "headline": "Bayern München lodges an offer of for €35m for Jonas Lindqvist.",
+    "body": "Bayern München lodges an offer of for €35m for Jonas Lindqvist.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-092",
+    "language": "it",
+    "headline": "Il Chelsea ha offerto for a reported €45m per il cartellino di Rafael Duarte.",
+    "body": "Il Chelsea ha offerto for a reported €45m per il cartellino di Rafael Duarte.",
+    "expected_predicate": "submits_bid",
+    "expected_certainty": "reported"
+  },
+  {
+    "id": "fx-093",
+    "language": "en",
+    "headline": "Napoli are interested in Kaito Mori for the upcoming window.",
+    "body": "Napoli are interested in Kaito Mori for the upcoming window.",
+    "expected_predicate": "inquiry_made",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-094",
+    "language": "de",
+    "headline": "Barcelona bekundet Interesse an einer Verpflichtung von Viktor Barski.",
+    "body": "Barcelona bekundet Interesse an einer Verpflichtung von Viktor Barski.",
+    "expected_predicate": "inquiry_made",
+    "expected_certainty": "rumoured"
+  },
+  {
+    "id": "fx-095",
+    "language": "en",
+    "headline": "Manchester City officially denies any deal for Thiago Ferraz.",
+    "body": "Manchester City officially denies any deal for Thiago Ferraz.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-096",
+    "language": "fr",
+    "headline": "Brighton & Hove Albion dément fermement tout accord pour Luca Brandt.",
+    "body": "Brighton & Hove Albion dément fermement tout accord pour Luca Brandt.",
+    "expected_predicate": "transfer_denied",
+    "expected_certainty": "denied"
+  },
+  {
+    "id": "fx-097",
+    "language": "en",
+    "headline": "Emeka Osei completes medical at Arsenal facility this morning.",
+    "body": "Emeka Osei completes medical at Arsenal facility this morning.",
+    "expected_predicate": "medical_scheduled",
+    "expected_certainty": "expected"
+  },
+  {
+    "id": "fx-098",
+    "language": "de",
+    "headline": "Kylian Mbappé absolviert medizincheck vor Real Madrid-Wechsel.",
+    "body": "Kylian Mbappé absolviert medizincheck vor Real Madrid-Wechsel.",
+    "expected_predicate": "medical_scheduled",
+    "expected_certainty": "expected"
+  },
+  {
+    "id": "fx-099",
+    "language": "en",
+    "headline": "Jonas Lindqvist renews contract with Bayern München on improved wages.",
+    "body": "Jonas Lindqvist renews contract with Bayern München on improved wages.",
+    "expected_predicate": "contract_extension",
+    "expected_certainty": "has_happened"
+  },
+  {
+    "id": "fx-100",
+    "language": "fr",
+    "headline": "Rafael Duarte prolonge son contrat avec Chelsea pour deux saisons.",
+    "body": "Rafael Duarte prolonge son contrat avec Chelsea pour deux saisons.",
+    "expected_predicate": "contract_extension",
+    "expected_certainty": "has_happened"
+  }
+]
