@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, Minus } from "lucide-react";
 import { ProCta } from "@/components/pro-cta";
+import { ManageSubscription } from "@/components/manage-subscription";
 import { getDictionary } from "@/lib/i18n";
 
 export const metadata: Metadata = { title: "Upgrade: Pro" };
@@ -49,12 +50,13 @@ function Cell({ v }: { v: CellValue }) {
 export default async function ProPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ lang?: string }>;
+  searchParams?: Promise<{ lang?: string; checkout?: string }>;
 }) {
   const sParams = searchParams ? await searchParams : undefined;
   const lang = sParams?.lang || "en";
   const t = getDictionary(lang);
   const querySuffix = lang !== "en" ? `?lang=${lang}` : "";
+  const checkoutState = sParams?.checkout;
 
   return (
     <main className="mx-auto max-w-4xl px-4 pb-20 md:px-6">
@@ -62,6 +64,18 @@ export default async function ProPage({
       <h1 className="mt-2 max-w-2xl font-display text-4xl font-medium leading-[1.08] tracking-tight md:text-5xl">
         {t.proTitle}
       </h1>
+
+      {checkoutState === "success" && (
+        <div className="mt-6 border-2 border-confirmed px-5 py-4 text-[14px] text-confirmed">
+          Subscription confirmed — thank you. It can take a few seconds for Pro access to activate once Stripe
+          confirms payment.
+        </div>
+      )}
+      {checkoutState === "cancelled" && (
+        <div className="mt-6 border-2 border-rule-strong px-5 py-4 text-[14px] text-ink-soft">
+          Checkout was cancelled. Nothing was charged, and nothing about the free ledger changed.
+        </div>
+      )}
 
       <div className="mt-6 border-2 border-ink px-5 py-4 md:px-6">
         <p className="font-display text-[17px] leading-relaxed md:text-lg">
@@ -104,7 +118,7 @@ export default async function ProPage({
             ))}
           </ul>
           <div className="mt-5">
-            <ProCta label={t.startMonthly} />
+            <ProCta label={t.startMonthly} planId="plan_pro_monthly" />
           </div>
         </div>
 
@@ -125,7 +139,7 @@ export default async function ProPage({
             ))}
           </ul>
           <div className="mt-5">
-            <ProCta label={t.startAnnual} />
+            <ProCta label={t.startAnnual} planId="plan_pro_annual" />
           </div>
         </div>
       </section>
@@ -141,6 +155,18 @@ export default async function ProPage({
             </div>
           ))}
         </dl>
+      </section>
+
+      {/* Manage existing subscription */}
+      <section className="mt-14 border border-rule-strong px-5 py-5" aria-label="Manage your subscription">
+        <h2 className="font-display text-lg font-medium">Already subscribed?</h2>
+        <p className="mt-1 text-[13.5px] text-ink-soft">
+          Enter the email you subscribed with to change your plan, update your card, or cancel — handled entirely by
+          Stripe, no email to us required.
+        </p>
+        <div className="mt-4">
+          <ManageSubscription />
+        </div>
       </section>
     </main>
   );

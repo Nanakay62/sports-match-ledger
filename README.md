@@ -80,6 +80,26 @@ uv run --with-requirements apps/api/requirements.txt python scripts/seed_event_t
 
 ---
 
+## Billing (Stripe, test mode)
+
+Pro subscriptions run through Stripe Checkout and the Stripe Billing Portal. Without
+`STRIPE_SECRET_KEY` / `STRIPE_PRICE_ID_MONTHLY` / `STRIPE_PRICE_ID_ANNUAL` set, checkout
+returns a clean `503` rather than failing silently — the free ledger is unaffected either way.
+
+To wire it up in a Stripe sandbox account:
+1. Create two recurring Prices in test mode (monthly, annual) and copy their `price_...` IDs.
+2. Set `STRIPE_SECRET_KEY` (`sk_test_...`), `STRIPE_PRICE_ID_MONTHLY`, `STRIPE_PRICE_ID_ANNUAL` in `.env`.
+3. Forward webhooks to your local API with the Stripe CLI and set the printed secret as `STRIPE_WEBHOOK_SECRET`:
+   ```bash
+   stripe listen --forward-to localhost:8000/api/v1/billing/webhook
+   ```
+4. Subscribe through `/pro` with a [Stripe test card](https://docs.stripe.com/testing#cards) — entitlements are
+   persisted in `customer_entitlements`, keyed by the email entered at checkout (no password, per Handbook §18.1).
+
+See `docs/adr/0017-stripe-billing-and-persisted-entitlements.md` for what is and isn't handled yet (notably: no EU VAT/Stripe Tax, and no accounts system beyond email).
+
+---
+
 ## Testing & Quality Gates
 
 The project enforces 6 strict quality gates verified via GitHub Actions (`.github/workflows/ci.yml`):

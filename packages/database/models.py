@@ -316,3 +316,36 @@ class EditorialEvaluationLogModel(Base):
 
     claim: Mapped["ClaimModel"] = relationship("ClaimModel")
     event: Mapped["EventModel"] = relationship("EventModel")
+
+
+class CustomerEntitlementModel(Base):
+    """Persisted Pro entitlement state, keyed by email (Handbook §18.1, no password required).
+
+    Written only by the Stripe webhook handler. Never trust client-supplied entitlement
+    state — this table is the single source of truth the API reads at the edge.
+    """
+
+    __tablename__ = "customer_entitlements"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False, index=True)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    plan_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="free", nullable=False)  # free|active|past_due|canceled
+    is_pro: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+
+class ProcessedWebhookEventModel(Base):
+    """Records processed Stripe webhook event IDs so redelivery is a safe no-op (Handbook §18.5)."""
+
+    __tablename__ = "processed_webhook_events"
+
+    event_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    processed_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
