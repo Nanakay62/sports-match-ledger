@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { useEntitlements } from "@/lib/entitlements";
 import { useWatchlist } from "@/lib/watchlist";
 import { trackPaywallEvent } from "@/lib/paywall-tracking";
+import { subscribeToAlerts, unsubscribeFromAlerts } from "@/lib/alerts";
 
 export function WatchButton({ eventId, querySuffix = "" }: { eventId: string; querySuffix?: string }) {
-  const { watchlistLimit, email, loading } = useEntitlements();
+  const { watchlistLimit, email, isPro, loading } = useEntitlements();
   const { ids, add, remove, isWatching } = useWatchlist();
   const [showWall, setShowWall] = useState(false);
 
@@ -19,6 +20,7 @@ export function WatchButton({ eventId, querySuffix = "" }: { eventId: string; qu
   function handleClick() {
     if (watching) {
       remove(eventId);
+      unsubscribeFromAlerts(email, eventId);
       return;
     }
     if (atLimit) {
@@ -27,6 +29,7 @@ export function WatchButton({ eventId, querySuffix = "" }: { eventId: string; qu
       return;
     }
     add(eventId);
+    subscribeToAlerts(email, eventId);
   }
 
   return (
@@ -39,6 +42,18 @@ export function WatchButton({ eventId, querySuffix = "" }: { eventId: string; qu
       >
         {watching ? "On your watchlist" : "Add to watchlist"}
       </Button>
+      {watching && email && (
+        <p className="text-[11.5px] text-ink-faint">
+          {isPro ? "Real-time email alerts on status changes." : (
+            <>
+              Included in your daily digest ·{" "}
+              <Link href={`/pro${querySuffix}`} className="underline hover:text-ink">
+                real-time on Pro
+              </Link>
+            </>
+          )}
+        </p>
+      )}
       {!watching && ids.length > 0 && (
         <p className="text-[11.5px] text-ink-faint">
           Watching {ids.length} of {watchlistLimit === 99999 ? "unlimited" : watchlistLimit} free ·{" "}

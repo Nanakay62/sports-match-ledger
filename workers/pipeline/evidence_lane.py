@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -12,8 +13,11 @@ from packages.ai.ladder import DeterministicValidator
 from packages.ai.summarizer import StructuredEvidenceSummarizer
 from packages.common.validation import DeterministicValidationEngine, ValidationClaimInput
 from packages.database.repository import LedgerRepository
+from packages.notifications.dispatcher import NotificationDispatcher
 from workers.pipeline.claim_extractor import StructuredClaimExtractor
 from workers.pipeline.review_router import HumanReviewRouter
+
+logger = logging.getLogger(__name__)
 
 
 class EvidenceLaneWorker:
@@ -23,9 +27,10 @@ class EvidenceLaneWorker:
     Validates outputs via DeterministicValidator before publication.
     """
 
-    def __init__(self, session: Session, cost_tracker: CostTracker):
+    def __init__(self, session: Session, cost_tracker: CostTracker, notification_dispatcher: NotificationDispatcher | None = None):
         self.session = session
         self.cost_tracker = cost_tracker
+        self.notification_dispatcher = notification_dispatcher or NotificationDispatcher()
 
     def evaluate_and_publish_event(
         self,
@@ -130,6 +135,7 @@ class EvidenceLaneWorker:
         )
 
         # Update event record in DB
+        previous_status = event.status
         event.status = val_result.status.value
         event.independent_sources = val_result.independent_roots
         event.evidence_rationale_json = json.dumps(bullets)
@@ -137,6 +143,20 @@ class EvidenceLaneWorker:
             event.summary = summary_res.summary_text
         event.updated_at = datetime.now(timezone.utc)
         self.session.commit()
+
+        # Handbook §18.1: notify watchlist subscribers — real-time for Pro, queued
+        # into the daily digest for Free. Never blocks or fails publication itself.
+        if previous_status != event.status:
+            try:
+                self.notification_dispatcher.dispatch_status_change(
+                    session=self.session,
+                    event_id=event.id,
+                    headline=event.headline,
+                    old_status=previous_status,
+                    new_status=event.status,
+                )
+            except Exception as exc:
+                logger.warning(f"Notification dispatch failed for event {event.id}: {exc}")
 
         duration_sec = round(time.monotonic() - start_time, 3)
         return {
