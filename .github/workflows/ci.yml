@@ -109,15 +109,5 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install pydantic==2.10.6
-      - name: Run Deterministic Evaluator Gate
-        run: |
-          PYTHONPATH=. python -c "
-          from packages.ai.ladder import DeterministicValidator
-          res = DeterministicValidator.validate_generation(
-              generated_text='Real Madrid opened talks for Jonas Lindqvist on Monday.',
-              source_evidence=['Real Madrid opened talks for Jonas Lindqvist on Monday.'],
-              expected_entities=['Real Madrid', 'Jonas Lindqvist']
-          )
-          assert res.is_valid and res.unsupported_fact_rate == 0.0, 'Release gate assertion failed'
-          print('Gate 6 deterministic scorer assertions passed.')
-          "
+      - name: Run Release Gate Against the Full Golden Evaluation Set
+        run: PYTHONPATH=. python scripts/run_release_gate.py
