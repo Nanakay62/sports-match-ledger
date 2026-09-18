@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { getStoredEmail, setStoredEmail } from "@/lib/identity";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -11,6 +12,11 @@ export function ProCta({ label, planId }: { label: string; planId: "plan_pro_mon
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const stored = getStoredEmail();
+    if (stored) setEmail(stored);
+  }, []);
 
   async function startCheckout(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +37,9 @@ export function ProCta({ label, planId }: { label: string; planId: "plan_pro_mon
         throw new Error(body.detail || "Checkout could not be started.");
       }
       const data = await resp.json();
+      // Remember this email so entitlements/watchlist recognise this visitor the
+      // moment they return from Stripe, without waiting on a manual "identify" step.
+      setStoredEmail(email);
       window.location.href = data.checkout_url;
     } catch (err) {
       setStatus("error");

@@ -7,14 +7,20 @@ it isolated means a billing schema change can never touch ledger invariants.
 
 import uuid
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .models import CustomerEntitlementModel, ProcessedWebhookEventModel
+from .models import CustomerEntitlementModel, PaywallEventModel, ProcessedWebhookEventModel
 
 FREE_WATCHLIST_LIMIT = 3
 PRO_WATCHLIST_LIMIT = 99999
+FREE_ARCHIVE_WINDOW_DAYS = 30
+FREE_REPORTER_INDEX_LIMIT = 20
+
+VALID_WALL_IDS = {"watchlist_limit", "archive_depth", "reporter_history", "reporter_index", "export"}
+VALID_ACTIONS = {"shown", "clicked"}
 
 
 class BillingRepository:
@@ -72,3 +78,57 @@ class BillingRepository:
     def mark_webhook_event_processed(session: Session, event_id: str, event_type: str) -> None:
         session.add(ProcessedWebhookEventModel(event_id=event_id, event_type=event_type))
         session.commit()
+
+    @staticmethod
+    def record_paywall_event(
+        session: Session,
+        wall_id: str,
+        action: str,
+        email: str | None = None,
+        context: str | None = None,
+    ) -> PaywallEventModel:
+        """Records a single paywall impression or click for per-wall conversion measurement.
+
+        Does not itself validate wall_id/action — the API layer checks those against
+        VALID_WALL_IDS/VALID_ACTIONS before calling this, so a frontend typo fails the
+        request loudly (400) instead of silently corrupting the conversion data.
+        """
+        record = PaywallEventModel(
+            wall_id=wall_id,
+            action=action,
+            email=email.strip().lower() if email else None,
+            context=context,
+        )
+        session.add(record)
+        session.commit()
+        return record
+
+    @staticmethod
+    def get_paywall_conversion_summary(session: Session) -> list[dict[str, Any]]:
+        """Per-wall shown/clicked counts and conversion rate (Handbook §18.3/§18.5:
+        "measure the conversion rate of each wall separately").
+        """
+        stmt = select(
+            PaywallEventModel.wall_id,
+            PaywallEventModel.action,
+            func.count(PaywallEventModel.id),
+        ).group_by(PaywallEventModel.wall_id, PaywallEventModel.action)
+        rows = session.execute(stmt).all()
+
+        by_wall: dict[str, dict[str, int]] = {}
+        for wall_id, action, count in rows:
+            by_wall.setdefault(wall_id, {"shown": 0, "clicked": 0})[action] = count
+
+        summary = []
+        for wall_id, counts in sorted(by_wall.items()):
+            shown = counts.get("shown", 0)
+            clicked = counts.get("clicked", 0)
+            summary.append(
+                {
+                    "wall_id": wall_id,
+                    "shown": shown,
+                    "clicked": clicked,
+                    "conversion_rate": round(clicked / shown, 4) if shown else 0.0,
+                }
+            )
+        return summary

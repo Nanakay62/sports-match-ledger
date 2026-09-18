@@ -349,3 +349,19 @@ class ProcessedWebhookEventModel(Base):
     event_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
     processed_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class PaywallEventModel(Base):
+    """Records a paywall impression or click so each wall's conversion can be measured
+    separately (Handbook §18.3: "measure the conversion rate of each wall separately"),
+    rather than as an unmeasured design assumption.
+    """
+
+    __tablename__ = "paywall_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    wall_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(16), nullable=False)  # "shown" | "clicked"
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True, index=True)
+    context: Mapped[str | None] = mapped_column(String(256), nullable=True)  # e.g. event_id or subject slug
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)

@@ -1,8 +1,11 @@
+import csv
+import io
 import json
 import re
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -15,6 +18,7 @@ from packages.common.models import (
     EventFirstReport,
     EventStatus,
 )
+from packages.database.billing_repository import BillingRepository
 from packages.database.models import ClaimModel, SourceModel
 from packages.database.repository import LedgerRepository
 from packages.database.session import get_db
@@ -284,3 +288,94 @@ def list_corrections(
         results.append(ClaimWithEvent(claim=claim_obj, event=event_obj))
 
     return results
+
+
+EXPORT_FIELDS = [
+    "id",
+    "event_id",
+    "outlet",
+    "reporter",
+    "text",
+    "attribution",
+    "language",
+    "url",
+    "timestamp",
+    "is_superseded",
+]
+
+
+def _claim_export_row(cm: ClaimModel) -> dict:
+    return {
+        "id": cm.id,
+        "event_id": cm.event_id,
+        "outlet": cm.source.name if cm.source else "Unknown",
+        "reporter": cm.reporter,
+        "text": cm.claim_text,
+        "attribution": cm.attribution,
+        "language": cm.language,
+        "url": cm.original_url,
+        "timestamp": cm.timestamp.isoformat(),
+        "is_superseded": cm.is_superseded,
+    }
+
+
+@router.get("/export")
+def export_claims(
+    email: str = Query(..., description="Email to check Pro entitlement against"),
+    event_id: str | None = Query(default=None, description="Export claims for a single event"),
+    subject_slug: str | None = Query(default=None, description="Export claims for an outlet or reporter"),
+    format: str = Query(default="csv", pattern="^(csv|json)$"),
+    db: Session = Depends(get_db),
+):
+    """CSV/JSON claim-ledger export — a Pro-only feature (Handbook §18.3/§18.4).
+
+    Never trusts a client-supplied entitlement flag: looks up the real persisted
+    entitlement for the given email on every call.
+    """
+    if not event_id and not subject_slug:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Provide event_id or subject_slug")
+
+    record = BillingRepository.get_entitlement_by_email(db, email)
+    if record is None or not record.is_pro:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Export is a Pro feature. Upgrade at /pro to export the claim ledger.",
+        )
+
+    if event_id:
+        claim_models = LedgerRepository.list_claims(session=db, event_id=event_id)
+    else:
+        normalized = (subject_slug or "").replace("-", " ").strip().lower()
+        sources = db.query(SourceModel).all()
+        target_source = next(
+            (s for s in sources if s.name.lower() == normalized or s.id == subject_slug or slugify_name(s.name) == subject_slug),
+            None,
+        )
+        target_name = target_source.name if target_source else normalized
+        target_id = target_source.id if target_source else subject_slug
+        claim_models = (
+            db.query(ClaimModel)
+            .filter((ClaimModel.source_id == target_id) | (ClaimModel.reporter == target_name) | (ClaimModel.reporter_id == target_id))
+            .order_by(ClaimModel.timestamp.desc())
+            .all()
+        )
+
+    rows = [_claim_export_row(cm) for cm in claim_models]
+    filename_scope = event_id or subject_slug
+
+    if format == "json":
+        return Response(
+            content=json.dumps(rows, indent=2),
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="claims_{filename_scope}.json"'},
+        )
+
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=EXPORT_FIELDS)
+    writer.writeheader()
+    writer.writerows(rows)
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="claims_{filename_scope}.csv"'},
+    )

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LanguageSelector } from "./language-selector";
+import { AccountStatus } from "./account-status";
 import { getDictionary } from "@/lib/i18n";
 
 function MastheadContent() {
@@ -48,6 +49,8 @@ function MastheadContent() {
         <div className="flex items-center justify-between border-b border-rule py-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-ink-faint">
           <span>{t.subHeaderAudit}</span>
           <div className="flex items-center gap-3">
+            <AccountStatus />
+            <span aria-hidden className="hidden sm:inline">·</span>
             <LanguageSelector />
             <span aria-hidden className="hidden sm:inline">·</span>
             <span suppressHydrationWarning>{today}</span>

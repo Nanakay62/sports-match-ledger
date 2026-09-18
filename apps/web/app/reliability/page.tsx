@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ArrowUpRight, CheckCircle2, HelpCircle, ShieldAlert } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { loadAllReliabilityScores } from "@/lib/data-loader";
 import { pct, slugify } from "@/lib/format";
 import { getDictionary } from "@/lib/i18n";
+import { ReportersTable } from "@/components/reporters-table";
 
 export const metadata = {
   title: "Reliability Desk: Tracked Outlets and Reporters",
@@ -136,61 +137,8 @@ export default async function ReliabilityDeskPage({
           <span>Individual accountability profiles</span>
         </div>
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-left text-[13px]">
-            <thead>
-              <tr className="border-b border-ink font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-faint">
-                <th className="pb-2.5 pt-1 font-medium">{t.colName}</th>
-                <th className="pb-2.5 pt-1 font-medium">Affiliation / Beat</th>
-                <th className="pb-2.5 pt-1 text-center font-medium">{t.colResolved}</th>
-                <th className="pb-2.5 pt-1 text-center font-medium">{t.statusConfirmed}</th>
-                <th className="pb-2.5 pt-1 text-center font-medium">{t.colCorrected}</th>
-                <th className="pb-2.5 pt-1 text-right font-medium">{t.colScore}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-rule">
-              {reporters.map((item) => {
-                const total = (item as any).totalClaims ?? item.sampleSize;
-                const correct = item.correctCount;
-                const corrected = total - correct;
-                const slug = slugify(item.subjectName);
-
-                return (
-                  <tr key={item.subjectName} className="group transition-colors hover:bg-rule/30">
-                    <td className="py-3">
-                      <Link
-                        href={`/reliability/${slug}${querySuffix}`}
-                        className="font-medium text-ink group-hover:text-ledger group-hover:underline"
-                      >
-                        {item.subjectName}
-                      </Link>
-                    </td>
-                    <td className="py-3 text-[12px] text-ink-faint">
-                      {item.affiliation ? `${item.affiliation} · ` : ""}
-                      {item.beat ?? "European Football"}
-                    </td>
-                    <td className="py-3 text-center font-mono text-[12px] text-ink-soft">{total}</td>
-                    <td className="py-3 text-center font-mono text-[12px] text-confirmed">{correct}</td>
-                    <td className="py-3 text-center font-mono text-[12px] text-corrected">{corrected}</td>
-                    <td className="py-3 text-right">
-                      {total >= 10 ? (
-                        <div className="inline-flex items-center gap-1.5 font-mono text-[13px] font-semibold text-ink">
-                          <span>{pct(correct, total)}</span>
-                          <span className="text-[10px] text-ink-faint font-normal">
-                            (LB {Math.round((correct / total) * 88)}%)
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="font-mono text-[11px] italic text-ink-faint">
-                          Pending ({total}/10)
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="mt-4">
+          <ReportersTable reporters={reporters} querySuffix={querySuffix} />
         </div>
       </section>
 
