@@ -78,7 +78,7 @@ export async function fetchEvents(status?: string, lang: string = "en"): Promise
       url.searchParams.set("lang", lang);
     }
     const res = await fetch(url.toString(), {
-      next: { revalidate: 0 },
+      next: { revalidate: 60 },
       signal: AbortSignal.timeout(5000),
     });
     if (res.ok) {
@@ -101,7 +101,7 @@ export async function fetchEventById(id: string, lang: string = "en"): Promise<E
       url.searchParams.set("lang", lang);
     }
     const res = await fetch(url.toString(), {
-      next: { revalidate: 0 },
+      next: { revalidate: 60 },
       signal: AbortSignal.timeout(5000),
     });
     if (res.ok) {
@@ -117,7 +117,7 @@ export async function fetchEventById(id: string, lang: string = "en"): Promise<E
 export async function fetchClaimsByEvent(eventId: string): Promise<Claim[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/claims/by-event/${eventId}`, {
-      next: { revalidate: 0 },
+      next: { revalidate: 60 },
       signal: AbortSignal.timeout(5000),
     });
     if (res.ok) {
@@ -135,7 +135,7 @@ export async function fetchClaimsByEvent(eventId: string): Promise<Claim[]> {
 export async function fetchReliabilityScores(): Promise<ReliabilityScore[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/reliability`, {
-      next: { revalidate: 0 },
+      next: { revalidate: 300 },
       signal: AbortSignal.timeout(5000),
     });
     if (res.ok) {
@@ -153,7 +153,7 @@ export async function fetchReliabilityScores(): Promise<ReliabilityScore[]> {
 export async function fetchReliabilityScore(slug: string): Promise<ReliabilityScore | null> {
   try {
     const res = await fetch(`${API_BASE_URL}/reliability/${slug}`, {
-      next: { revalidate: 0 },
+      next: { revalidate: 300 },
       signal: AbortSignal.timeout(5000),
     });
     if (res.ok) {
@@ -169,7 +169,7 @@ export async function fetchReliabilityScore(slug: string): Promise<ReliabilitySc
 export async function fetchClaimsBySource(subjectSlug: string): Promise<{ claim: Claim; event: Event }[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/claims/by-source/${subjectSlug}`, {
-      next: { revalidate: 0 },
+      next: { revalidate: 300 },
       signal: AbortSignal.timeout(5000),
     });
     if (res.ok) {
@@ -190,7 +190,7 @@ export async function fetchClaimsBySource(subjectSlug: string): Promise<{ claim:
 export async function fetchCorrections(): Promise<{ claim: Claim; event: Event }[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/claims/corrections`, {
-      next: { revalidate: 0 },
+      next: { revalidate: 120 },
       signal: AbortSignal.timeout(5000),
     });
     if (res.ok) {
